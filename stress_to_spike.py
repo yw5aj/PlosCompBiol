@@ -16,14 +16,15 @@ from lif_model import get_spikes
 
 
 # %% Convert fine stress to current in all groups of Merkel Cells
-def sed_to_group_current(fine_time, fine_stress, tau1, tau2, k1, mode, groups):
+def stress_to_group_current(fine_time, fine_stress,
+                            tau1, tau2, k1, mode, groups):
     """
     Convert fine stress to current in all groups of Merkel Cells.
 
     Parameters
     ----------
-    fine_sed : 1d-array
-        Interpolated SED.
+    fine_stress : 1d-array
+        Interpolated stress.
     groups : 1d-array
         Groups of Merkel cells.
         Example: [8, 5, 3, 1] has 4 groups, 8, 5, 3, and 1 cell in each group.
@@ -103,24 +104,24 @@ if __name__ == '__main__':
     k1_ap3 = 0.5
     # %% Choose 1 stress-current based on decay parameters
 #   # The standard generator current
-#    gen_current = sed_to_group_current(fine_time, fine_stress, tau1_m, tau2_m, k1_m, 'gen', MC_GROUPS)
+#    gen_current = stress_to_group_current(fine_time, fine_stress, tau1_m, tau2_m, k1_m, 'gen', MC_GROUPS)
     # The standard neurite current
-#    gen_current = sed_to_group_current(fine_time, fine_stress, tau1_m, tau2_m, k1_m, 'nr', MC_GROUPS)
+#    gen_current = stress_to_group_current(fine_time, fine_stress, tau1_m, tau2_m, k1_m, 'nr', MC_GROUPS)
 #    # Change tau1
-#    gen_current = sed_to_group_current(fine_time, fine_stress, tau1_s, tau2_m, k1_m, 'gen', MC_GROUPS)
-#    gen_current = sed_to_group_current(fine_time, fine_stress, tau1_l, tau2_m, k1_m, 'gen', MC_GROUPS)
+#    gen_current = stress_to_group_current(fine_time, fine_stress, tau1_s, tau2_m, k1_m, 'gen', MC_GROUPS)
+#    gen_current = stress_to_group_current(fine_time, fine_stress, tau1_l, tau2_m, k1_m, 'gen', MC_GROUPS)
 #    # Change tau2
-#    gen_current = sed_to_group_current(fine_time, fine_stress, tau1_m, tau2_s, k1_m, 'gen', MC_GROUPS)
-#    gen_current = sed_to_group_current(fine_time, fine_stress, tau1_m, tau2_l, k1_m, 'gen', MC_GROUPS)
+#    gen_current = stress_to_group_current(fine_time, fine_stress, tau1_m, tau2_s, k1_m, 'gen', MC_GROUPS)
+#    gen_current = stress_to_group_current(fine_time, fine_stress, tau1_m, tau2_l, k1_m, 'gen', MC_GROUPS)
 #    # Change k1
-#    gen_current = sed_to_group_current(fine_time, fine_stress, tau1_m, tau2_m, k1_s, 'gen', MC_GROUPS)
-#    gen_current = sed_to_group_current(fine_time, fine_stress, tau1_m, tau2_m, k1_l, 'gen', MC_GROUPS)
+#    gen_current = stress_to_group_current(fine_time, fine_stress, tau1_m, tau2_m, k1_s, 'gen', MC_GROUPS)
+#    gen_current = stress_to_group_current(fine_time, fine_stress, tau1_m, tau2_m, k1_l, 'gen', MC_GROUPS)
     # New approach 1: modify parameters
-#    gen_current = sed_to_group_current(fine_time, fine_stress, tau1_ap1, tau2_ap1, k1_ap1, 'gen', MC_GROUPS)
+#    gen_current = stress_to_group_current(fine_time, fine_stress, tau1_ap1, tau2_ap1, k1_ap1, 'gen', MC_GROUPS)
     # New approach 2: add a mechanism
-    gen_current = sed_to_group_current(fine_time, fine_stress, tau1_m, tau2_ap2, k1_ap2, 'nr', MC_GROUPS)
+    gen_current = stress_to_group_current(fine_time, fine_stress, tau1_m, tau2_ap2, k1_ap2, 'nr', MC_GROUPS)
     # New approach 3: add K to neurite mechanism
-#    gen_current = sed_to_group_current(fine_time, fine_stress, tau1_ap3, tau2_ap3, k1_ap3, 'gen', MC_GROUPS)
+#    gen_current = stress_to_group_current(fine_time, fine_stress, tau1_ap3, tau2_ap3, k1_ap3, 'gen', MC_GROUPS)
     # %% Current to spike calculation
     spike_time = get_spikes(gen_current)
     spike_time = np.array(spike_time)
@@ -139,7 +140,7 @@ if __name__ == '__main__':
 #            sin_stress = stress_val*np.sin(2*np.pi*(fine_time)*freq)
 #            fine_stress = sin_stress.copy()
 #            fine_stress[np.nonzero(fine_stress<0)[0]]=0
-#            gen_current = sed_to_group_current(fine_time, fine_stress, tau1_m, tau2_m, k1_m, 'gen', MC_GROUPS)
+#            gen_current = stress_to_group_current(fine_time, fine_stress, tau1_m, tau2_m, k1_m, 'gen', MC_GROUPS)
 #            spike_list = get_spikes(gen_current)
 #            spike_time = spike_list[0]
 #            spike_time = np.array(spike_time)
