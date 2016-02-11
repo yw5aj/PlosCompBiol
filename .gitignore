@@ -1,3 +1,31 @@
+## Start of customized rules
+# Text files
+*.txt
+*.csv
+
+# Temp files
+*.rpy*
+*.pyc
+*.pkl
+*.log
+*.dmp
+
+# Matlab files
+*.mat
+
+# Office files
+*.vsd*
+*.doc*
+*.xls*
+
+# Figures
+*.png
+*.pdf
+*.svg
+*.tif
+
+
+## Start of automatically generated rules
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
