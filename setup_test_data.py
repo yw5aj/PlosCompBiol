@@ -2,7 +2,6 @@
 import numpy as np
 
 from stress_to_spike import stress_to_group_current
-from gen_function import stress_to_current
 import lif_model
 from model_constants import MC_GROUPS
 
