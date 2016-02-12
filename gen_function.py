@@ -125,18 +125,16 @@ def stress_to_current(fine_time, fine_stress, tau_nr, tau_mc, tau_ad,
     k_nr, k_mc, k_ad : double
         Peak/steady ratio for the neurite/Merkel cell/adaptation mechanism.
     k_mc_1, k_nr_1, k_ad_1 : double
-        1st sub-component of the `k_mc` and `k_ad`.
-    output : string
-        Decide what current is output.
-        'gen' = output total generator current
-        'mc' = output Merkel cell mechanism current
-        'nr' = output neurite mechanism current
-        'ad' = output adaptation mechanism current
+        1st sub-component of the `k_mc`, `k_nr`, and `k_ad`.
 
     Returns
     -------
-    gen_current : 1d-array
+    current_dict : dict
         Generator current from the generator function.
+        'gen' : output total generator current
+        'mc' : output Merkel cell mechanism current
+        'nr' : output neurite mechanism current
+        'ad' : output adaptation mechanism current
     """
     ds = np.r_[0, np.diff(fine_stress)]
 
