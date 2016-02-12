@@ -2,11 +2,23 @@
 import numpy as np
 
 from stress_to_spike import stress_to_group_current
+from gen_function import stress_to_current
 import lif_model
 from model_constants import MC_GROUPS
 
 
 TEST_DATA_PATH = './csvs/test/'
+
+
+# Commonly used constants
+tau1 = 0.008
+tau2 = 1
+tau3 = 0.5  # in sec, new approach 2
+k1 = 0.1
+k3 = 0.9
+a = 1.5e-12  # in Pa/mA, new approach 3
+b = 1.5e-12  # in Pa/mA, new approach 3
+c = 2e-12  # in Pa/mA, new approach 2
 
 
 def load_test_data(vname_list):
@@ -32,9 +44,9 @@ def setup_gen_function():
     np.savetxt(TEST_DATA_PATH + 'fine_stress.csv', fine_stress, delimiter=',')
     np.savetxt(TEST_DATA_PATH + 'fine_time.csv', fine_time, delimiter=',')
     # Generator function decay parameters
-    tau1_m = 0.008
-    tau2_ap2 = 1
-    k1_ap2 = 0.1
+    tau1_m = tau1
+    tau2_ap2 = tau2
+    k1_ap2 = k1
     gen_current = stress_to_group_current(fine_time, fine_stress, tau1_m,
                                           tau2_ap2, k1_ap2, 'gen', MC_GROUPS)
     nr_current = stress_to_group_current(fine_time, fine_stress, tau1_m,

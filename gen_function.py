@@ -38,7 +38,7 @@ def prepare_stress(rough_time, rough_stress):
 
 
 # %% Convert stress to current
-def stress_to_current_old(fine_time, fine_stress, tau1, tau2, k1, mode):
+def stress_to_current(fine_time, fine_stress, tau1, tau2, k1, mode):
     """
     Generate current from the stress of a single Merkel cell.
 
@@ -109,8 +109,8 @@ def stress_to_current_old(fine_time, fine_stress, tau1, tau2, k1, mode):
         return gen_current
 
 
-def stress_to_current(fine_time, fine_stress, tau_nr, tau_mc, tau_ad,
-                      k_nr, k_nr_1, k_mc, k_mc_1, k_ad, k_ad_1):
+def stress_to_current_new(fine_time, fine_stress, tau_nr, tau_mc, tau_ad,
+                          k_nr, k_nr_1, k_mc, k_mc_1, k_ad, k_ad_1):
     """
     Generate current from the stress of a single Merkel cell.
 
@@ -149,6 +149,7 @@ def stress_to_current(fine_time, fine_stress, tau_nr, tau_mc, tau_ad,
     ad_current = get_sub_current(k_ad, [k_ad_1, 1 - k_ad_1], tau_ad)
     gen_current = mc_current + nr_current + ad_current
     current_dict = {}
+    key = None  # Such that locals() won't change size during runtime
     for key in locals():
         if '_current' in key:
             current_dict[key] = locals()[key]
