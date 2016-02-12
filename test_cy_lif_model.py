@@ -1,13 +1,16 @@
 import numpy as np
-import setpyximport
+import pytest
+import os
 
 from stress_to_spike import stress_to_group_current
 import lif_model
-import cy_lif_model
 from model_constants import MC_GROUPS
 
+import setpyximport
+import cy_lif_model
 
-if __name__ == '__main__':
+
+def test_cy_lif_model():
     fine_stress = np.genfromtxt('./csvs/fem/dcon_disp3_stress.csv',
                                 delimiter=',')
     fine_time = np.genfromtxt('./csvs/fem/dcon_disp3_time.csv',
@@ -21,6 +24,10 @@ if __name__ == '__main__':
     spike_time = lif_model.get_spikes(gen_current)
     cy_spike_time = cy_lif_model.get_spikes(gen_current)
     assert np.all(np.array(spike_time) == np.array(cy_spike_time))
+
+
+if __name__ == '__main__':
+    pytest.main([os.path.basename(__file__)])
     # %% Test speed
     '''
     %timeit -n3 spike_time = lif_model.get_spikes(gen_current)
