@@ -8,7 +8,7 @@
 import numpy as np
 cimport numpy as np
 import model_constants
-from libc.math cimport M_PI
+from libc.math cimport fmax, round
 
 
 #%% Define imported constants
@@ -39,7 +39,7 @@ cpdef double dudt(double pot, double current):
     """
     cdef double cm = LIF_PARAMS[1]
     cdef double rm = LIF_PARAMS[2]
-    cdef double ut = 0.
+    cdef double ut
     ut = current / cm - pot / (rm * cm)
     return ut
 
@@ -128,7 +128,7 @@ cpdef list get_spikes(double [:, ::1] current):
         integration_start = ini_time
         timestamp_finalpot = runge_kutta(current[0:trace_length, :],
                                          integration_start)
-        larger_time = max(timestamp_finalpot[0], ini_time + REFRACTORY_PERIOD)
+        larger_time = fmax(timestamp_finalpot[0], ini_time + REFRACTORY_PERIOD)
         larger_time = round(larger_time / LIF_RESOLUTION) * LIF_RESOLUTION
         if timestamp_finalpot[1] > threshold:
             spike_time.append(larger_time)
@@ -136,10 +136,5 @@ cpdef list get_spikes(double [:, ::1] current):
     return spike_time
 
 
-# %% main function: test of LIF model
 if __name__ == '__main__':
-    current = np.ones(5/LIF_RESOLUTION+1) * 5e-10
-    current = np.c_[current]
-    start_time = 0
-    mc_size = MC_GROUPS.shape[0]
-    time_pot = runge_kutta(current, start_time)
+    pass

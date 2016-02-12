@@ -62,7 +62,7 @@ def runge_kutta(current, start_time):
     h = LIF_RESOLUTION
     time_span = DURATION - start_time
     temp_time = 0.
-    current_index = start_time / h
+    current_index = int(start_time / h)
     each_pot = np.zeros(mc_size)
     max_pot = 0.
     mid_current = 0.
@@ -73,8 +73,8 @@ def runge_kutta(current, start_time):
     output = np.zeros(4)
     while temp_time <= time_span-h:
         for i in range(mc_size):
-            mid_current = 0.5 * (current[current_index, i] + \
-                current[current_index+1, i])
+            mid_current = 0.5 * (current[current_index, i] +
+                                 current[current_index+1, i])
             k1 = dudt(each_pot[i], current[current_index, i])
             k2 = dudt(each_pot[i] + 0.5*h*k1, mid_current)
             k3 = dudt(each_pot[i] + 0.5*h*k2, mid_current)
@@ -115,7 +115,7 @@ def get_spikes(current):
     larger_time = 0.0
     while ini_time <= DURATION:
         integration_start = ini_time
-        timestamp_finalpot = runge_kutta(current[0:trace_length,:],
+        timestamp_finalpot = runge_kutta(current[0:trace_length, :],
                                          integration_start)
         larger_time = np.max([timestamp_finalpot[0],
                               ini_time + REFRACTORY_PERIOD])
