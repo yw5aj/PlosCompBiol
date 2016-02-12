@@ -109,6 +109,80 @@ def stress_to_current(fine_time, fine_stress, tau1, tau2, k1, mode):
         return gen_current
 
 
+def stress_to_current_new(fine_time, fine_stress, tau_nr, tau_mc, tau_adpt,
+                          k_nr, k_nr_1, k_mc, k_mc_1, k_adpt,
+                          output):
+    """
+    Generate current from the stress of a single Merkel cell.
+
+    Parameters
+    ----------
+    fine_time : 1d-array
+        Timecourse of the indentation process.
+    fine_stress : 1d-array
+        Stress from a single Merkel cell.
+    tau_nr, tau_mc, tau_adpt : double
+        Decay time constant for the neurite/Merkel cell/adaptation mechanism.
+    k_nr, k_mc, k_adpt : double
+        Peak/steady ratio for the neurite/Merkel cell/adaptation mechanism.
+    k_mc_1, k_adpt_1 : double
+        1st sub-component of the `k_mc` and `k_adpt`.
+    output : string
+        Decide what current is output.
+        'gen' = output total generator current
+        'mc' = output Merkel cell mechanism current
+        'nr' = output neurite mechanism current
+        'adpt' = output adaptation mechanism current
+
+    Returns
+    -------
+    gen_current : 1d-array
+        Generator current from the generator function.
+    """
+    # Neuron current parameter
+#    a = 30e-12  # in Pa/mA, basic
+#    a = 2.1e-12  # in Pa/mA, new approach 1
+#    a = 4e-12  # in Pa/mA, new approach 2
+#    a = 1.5e-12  # in Pa/mA, new approach 3
+    # Merkel cell voltage parameter
+#    b = 1.875e-12  # in Pa/mA
+#    b = 1e-12  # in Pa/mA, new approach 1
+#    b = 1e-12  # in Pa/mA, new approach 2
+#    b = 1.5e-12  # in Pa/mA, new approach 3
+#    c = 2e-12  # in Pa/mA, new approach 2
+#    tau3 = 0.5  # in sec, new approach 2
+    k_mc_2 = 1 - k_mc_1
+#    k3 = 0.9
+    k_nr_2 = 1 - k_nr_1
+    dt = LIF_RESOLUTION * 1e-3  # in sec
+    dsdt = np.diff(fine_stress) / dt
+    dsdt = np.r_[0., dsdt]
+    # The K function
+    mc_k = k_mc * (k_mc_1 * np.exp(-fine_time / tau_mc) + k_mc_2)
+    nr_k = k_nr * (k_nr_1 * np.exp(-fine_time / tau_nr) + k_nr_2)
+#    nr_k = a * (k3 * np.exp(-fine_time / tau1) + k4)  # New approach 3 only
+    adpt_k = k_adpt * np.exp(-fine_time / tau_adpt)
+    # Two parts of currents
+    mc_current = np.convolve(mc_k, dsdt, mode='full')[:fine_time.shape[0]] \
+        * dt
+    nr_current = np.convolve(nr_k, dsdt, mode='full')[:fine_time.shape[0]] \
+        * dt
+    ia_current = np.convolve(ia_k, dsdt, mode='full')[:fine_time.shape[0]] \
+        * dt
+    nr_current[nr_current < 0] = 0
+    mc_current[mc_current < 0] = 0
+    ia_current[ia_current < 0] = 0
+    gen_current = mc_current + nr_current
+    gen_current = gen_current + ia_current  # new approach 2 only
+    nr_current = nr_current + ia_current  # new approach 2 only
+    if output == "nr":
+        return nr_current
+    elif output == "mc":
+        return mc_current
+    elif output == "gen":
+        return gen_current
+
+
 # %% Main function
 if __name__ == '__main__':
     pass

@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from model_constants import (LIF_RESOLUTION, DURATION, MC_GROUPS)
 from gen_function import prepare_stress, stress_to_current
-from lif_model import get_spikes
+from cy_lif_model import get_spikes
 
 
 # %% Convert fine stress to current in all groups of Merkel Cells
@@ -67,23 +67,11 @@ def spike_time_to_trace(spike_time):
 
 # %% Main function
 if __name__ == '__main__':
-    # Select stimulation method among 1, 2, and 3, and comment out the others.
-    # %% 1. For force control input
-#    rough_time = np.genfromtxt('./fcon_disp6_time.csv', delimiter=',')
-#    rough_stress = np.genfromtxt('./fcon_disp6_stress.csv', delimiter=',')
-#    fine_time, fine_stress = prepare_stress(rough_time, rough_stress)
-    # %% 2. For disp control input
-    fine_stress = np.genfromtxt('./Shawn model data/dcon_disp3_stress.csv',
+    # %% For disp control input
+    fine_stress = np.genfromtxt('./csvs/fem/dcon_disp3_stress.csv',
                                 delimiter=',')
-    fine_time = np.genfromtxt('./Shawn model data/dcon_disp3_time.csv',
+    fine_time = np.genfromtxt('./csvs/fem/dcon_disp3_time.csv',
                               delimiter=',')
-    # %% 3. For sinusoid input
-#    freq = 1.
-#    dur = 5.0001
-#    fine_time = np.arange(0,dur,LIF_RESOLUTION/1000)
-#    sin_stress = 3000*np.sin(2*np.pi*(fine_time)*freq)
-#    fine_stress = sin_stress.copy()
-#    fine_stress[np.nonzero(fine_stress<0)[0]]=0
     # %% Generator function decay parameters
     tau1_s = 0.003
     tau1_m = 0.008
@@ -129,35 +117,6 @@ if __name__ == '__main__':
     inst_fr = np.r_[0, 1000/np.diff(spike_time)]
     inst_fr_index = spike_trace[:, 1].nonzero()[0]
     inst_fr_time = inst_fr_index * LIF_RESOLUTION
-    # %% Stress to spike calculations for looped sinusoid stimulations
-#    freq_set = np.array([5, 10, 20])
-#    stress_range = np.arange(0, 1500, 50)
-#    stress_len = stress_range.shape[0]
-#    spike_array = []
-#    for freq in freq_set:
-#        for stress_val in stress_range:
-#            print(freq, ', ', stress_val)
-#            sin_stress = stress_val*np.sin(2*np.pi*(fine_time)*freq)
-#            fine_stress = sin_stress.copy()
-#            fine_stress[np.nonzero(fine_stress<0)[0]]=0
-#            gen_current = stress_to_group_current(fine_time, fine_stress, tau1_m, tau2_m, k1_m, 'gen', MC_GROUPS)
-#            spike_list = get_spikes(gen_current)
-#            spike_time = spike_list[0]
-#            spike_time = np.array(spike_time)
-#            spike_per_cyc = spike_time.shape[0] / (dur*freq)
-#            spike_array.append(spike_per_cyc)
-#    spike_array = np.array(spike_array)
-#    spike_per_cyc_5hz = spike_array[0:stress_len]
-#    spike_per_cyc_10hz = spike_array[stress_len:2*stress_len]
-#    spike_per_cyc_20hz = spike_array[2*stress_len:3*stress_len]
-#    fig, axs = plt.subplots()
-#    axs.plot(stress_range, spike_per_cyc_5hz, color='0')
-#    axs.plot(stress_range, spike_per_cyc_10hz, color='0.4')
-#    axs.plot(stress_range, spike_per_cyc_20hz, color='0.8')
-#    np.savetxt("sin_stress.csv", stress_range, delimiter=",")
-#    np.savetxt("sin_spike_per_cyc_5hz.csv", spike_per_cyc_5hz, delimiter=",")
-#    np.savetxt("sin_spike_per_cyc_10hz.csv", spike_per_cyc_10hz, delimiter=",")
-#    np.savetxt("sin_spike_per_cyc_20hz.csv", spike_per_cyc_20hz, delimiter=",")
     # %% Firing rate calculations for disp and force control
     # Get ramp-up fr
     max_index = np.argmax(fine_stress)
@@ -187,14 +146,17 @@ if __name__ == '__main__':
     spike_plot = axs.plot(spike_trace[:, 0]/1000, spike_trace[:, 1],
                           label='spikes', color='r')
     # %% Save files
-    np.savetxt("ap2_disp3_nr_spike_time.csv", spike_trace[:, 0]/1000,
-               delimiter=",")
-    np.savetxt("ap2_disp3_nr_spike_spike.csv", spike_trace[:, 1],
-               delimiter=",")
-    np.savetxt("ap2_disp3_nr_inst_fr_time.csv", inst_fr_time/1000,
-               delimiter=",")
-    np.savetxt("ap2_disp3_nr_inst_fr_fr.csv", inst_fr, delimiter=",")
-    np.savetxt("ap2_disp3_nr_spike.csv", spike_time/1000, delimiter=",")
-    np.savetxt("ap2_disp3_nr_current.csv", gen_current/8, delimiter=",")
-#    np.savetxt("disp2_stress.csv", fine_stress, delimiter=",")
-#    np.savetxt("disp2_time.csv", fine_time, delimiter=",")
+    np.savetxt('./csvs/output/ap2_disp3_nr_spike_time.csv',
+               spike_trace[:, 0]/1000, delimiter=',')
+    np.savetxt('./csvs/output/ap2_disp3_nr_spike_spike.csv', spike_trace[:, 1],
+               delimiter=',')
+    np.savetxt('./csvs/output/ap2_disp3_nr_inst_fr_time.csv',
+               inst_fr_time/1000, delimiter=',')
+    np.savetxt('./csvs/output/ap2_disp3_nr_inst_fr_fr.csv',
+               inst_fr, delimiter=',')
+    np.savetxt('./csvs/output/ap2_disp3_nr_spike.csv',
+               spike_time/1000, delimiter=',')
+    np.savetxt('./csvs/output/ap2_disp3_nr_current.csv',
+               gen_current/8, delimiter=',')
+#    np.savetxt('disp2_stress.csv', fine_stress, delimiter=',')
+#    np.savetxt('disp2_time.csv', fine_time, delimiter=',')

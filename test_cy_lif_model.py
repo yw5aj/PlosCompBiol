@@ -8,9 +8,9 @@ from model_constants import MC_GROUPS
 
 
 if __name__ == '__main__':
-    fine_stress = np.genfromtxt('./Shawn model data/dcon_disp3_stress.csv',
+    fine_stress = np.genfromtxt('./csvs/fem/dcon_disp3_stress.csv',
                                 delimiter=',')
-    fine_time = np.genfromtxt('./Shawn model data/dcon_disp3_time.csv',
+    fine_time = np.genfromtxt('./csvs/fem/dcon_disp3_time.csv',
                               delimiter=',')
     # %% Generator function decay parameters
     tau1_m = 0.008
