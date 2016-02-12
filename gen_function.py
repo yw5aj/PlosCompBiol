@@ -38,7 +38,7 @@ def prepare_stress(rough_time, rough_stress):
 
 
 # %% Convert stress to current
-def stress_to_current(fine_time, fine_stress, tau1, tau2, k1, mode):
+def stress_to_current_old(fine_time, fine_stress, tau1, tau2, k1, mode):
     """
     Generate current from the stress of a single Merkel cell.
 
@@ -68,13 +68,13 @@ def stress_to_current(fine_time, fine_stress, tau1, tau2, k1, mode):
     # Neuron current parameter
 #    a = 30e-12  # in Pa/mA, basic
 #    a = 2.1e-12  # in Pa/mA, new approach 1
-    a = 4e-12  # in Pa/mA, new approach 2
-#    a = 1.5e-12  # in Pa/mA, new approach 3
+#    a = 4e-12  # in Pa/mA, new approach 2
+    a = 1.5e-12  # in Pa/mA, new approach 3
     # Merkel cell voltage parameter
 #    b = 1.875e-12  # in Pa/mA
 #    b = 1e-12  # in Pa/mA, new approach 1
-    b = 1e-12  # in Pa/mA, new approach 2
-#    b = 1.5e-12  # in Pa/mA, new approach 3
+#    b = 1e-12  # in Pa/mA, new approach 2
+    b = 1.5e-12  # in Pa/mA, new approach 3
     c = 2e-12  # in Pa/mA, new approach 2
     tau3 = 0.5  # in sec, new approach 2
     k2 = 1-k1
@@ -85,8 +85,8 @@ def stress_to_current(fine_time, fine_stress, tau1, tau2, k1, mode):
     dsdt = np.r_[0., dsdt]
     # The K function
     mc_k = b * (k1 * np.exp(-fine_time / tau2) + k2)
-    nr_k = a * np.exp(-fine_time / tau1)
-#    nr_k = a * (k3 * np.exp(-fine_time / tau1) + k4)  # New approach 3 only
+#    nr_k = a * np.exp(-fine_time / tau1)
+    nr_k = a * (k3 * np.exp(-fine_time / tau1) + k4)  # New approach 3 only
     ia_k = c * np.exp(-fine_time / tau3)
     # Two parts of currents
     mc_current = np.convolve(mc_k, dsdt, mode='full')[:fine_time.shape[0]] \
@@ -109,9 +109,8 @@ def stress_to_current(fine_time, fine_stress, tau1, tau2, k1, mode):
         return gen_current
 
 
-def stress_to_current_new(fine_time, fine_stress, tau_nr, tau_mc, tau_ad,
-                          k_nr, k_nr_1, k_mc, k_mc_1, k_ad,
-                          output):
+def stress_to_current(fine_time, fine_stress, tau_nr, tau_mc, tau_ad,
+                      k_nr, k_nr_1, k_mc, k_mc_1, k_ad, k_ad_1):
     """
     Generate current from the stress of a single Merkel cell.
 
@@ -125,7 +124,7 @@ def stress_to_current_new(fine_time, fine_stress, tau_nr, tau_mc, tau_ad,
         Decay time constant for the neurite/Merkel cell/adaptation mechanism.
     k_nr, k_mc, k_ad : double
         Peak/steady ratio for the neurite/Merkel cell/adaptation mechanism.
-    k_mc_1, k_ad_1 : double
+    k_mc_1, k_nr_1, k_ad_1 : double
         1st sub-component of the `k_mc` and `k_ad`.
     output : string
         Decide what current is output.
@@ -139,34 +138,23 @@ def stress_to_current_new(fine_time, fine_stress, tau_nr, tau_mc, tau_ad,
     gen_current : 1d-array
         Generator current from the generator function.
     """
-    k_mc_2 = 1 - k_mc_1
-    k_nr_2 = 1 - k_nr_1
-    dt = LIF_RESOLUTION * 1e-3  # in sec
-    dsdt = np.diff(fine_stress) / dt
-    dsdt = np.r_[0., dsdt]
-    # The K function
-    mc_k = k_mc * (k_mc_1 * np.exp(-fine_time / tau_mc) + k_mc_2)
-    nr_k = k_nr * (k_nr_1 * np.exp(-fine_time / tau_nr) + k_nr_2)
-    ad_k = k_ad * np.exp(-fine_time / tau_ad)
-    # Two parts of currents
-    mc_current = np.convolve(mc_k, dsdt, mode='full')[:fine_time.shape[0]] \
-        * dt
-    nr_current = np.convolve(nr_k, dsdt, mode='full')[:fine_time.shape[0]] \
-        * dt
-    ad_current = np.convolve(ad_k, dsdt, mode='full')[:fine_time.shape[0]] \
-        * dt
-    nr_current[nr_current < 0] = 0
-    mc_current[mc_current < 0] = 0
-    ad_current[ad_current < 0] = 0
-    gen_current = mc_current + nr_current
-    gen_current = gen_current + ia_current  # new approach 2 only
-    nr_current = nr_current + ia_current  # new approach 2 only
-    if output == "nr":
-        return nr_current
-    elif output == "mc":
-        return mc_current
-    elif output == "gen":
-        return gen_current
+    ds = np.r_[0, np.diff(fine_stress)]
+
+    def get_sub_current(k, k_sub_list, tau):
+        k_func = k * (k_sub_list[0] * np.exp(-fine_time / tau) + k_sub_list[1])
+        current = np.convolve(k_func, ds, mode='full')[:fine_time.shape[0]]
+        current[current < 0] = 0
+        return current
+    # Gen current
+    mc_current = get_sub_current(k_mc, [k_mc_1, 1 - k_mc_1], tau_mc)
+    nr_current = get_sub_current(k_nr, [k_nr_1, 1 - k_nr_1], tau_nr)
+    ad_current = get_sub_current(k_ad, [k_ad_1, 1 - k_ad_1], tau_ad)
+    gen_current = mc_current + nr_current + ad_current
+    current_dict = {}
+    for key in locals():
+        if '_current' in key:
+            current_dict[key] = locals()[key]
+    return current_dict
 
 
 # %% Main function
