@@ -3,8 +3,7 @@ import numpy as np
 import pytest
 import os
 
-from setup_test_data import (load_test_data, tau_nr, tau_mc, tau_ad,
-                             k_mc_1, k_nr_1, k_ad_1, k_mc, k_nr, k_ad)
+from setup_test_data import load_test_data, params
 from gen_function import stress_to_current
 from model_constants import MC_GROUPS
 
@@ -17,11 +16,6 @@ def load_data():
 
 
 def test_stress_to_current(load_data):
-    params_key_list = ['tau_nr', 'tau_mc', 'tau_ad', 'k_nr', 'k_mc', 'k_ad',
-                       'k_nr_1', 'k_mc_1', 'k_ad_1']
-    params = {}
-    for key in params_key_list:
-        params[key] = globals()[key]
     current_dict = stress_to_current(
         load_data['fine_time'], load_data['fine_stress'],
         **params)
