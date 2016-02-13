@@ -16,12 +16,19 @@ def load_data():
 
 
 def test_stress_to_current(load_data):
-    current_dict = stress_to_current(
+    tau_arr = np.array((params['tau_nr'], params['tau_mc'],
+                        params['tau_ad'], np.inf))
+    k_arr = np.array((params['k_nr'] * params['k_nr_1'],
+                      params['k_mc'] * params['k_mc_1'],
+                      params['k_ad'] * params['k_ad_1'],
+                      params['k_nr'] * (1 - params['k_nr_1']) +
+                      params['k_mc'] * (1 - params['k_mc_1']) +
+                      params['k_ad'] * (1 - params['k_ad_1'])))
+    current_arr = stress_to_current(
         load_data['fine_time'], load_data['fine_stress'],
-        **params)
-    for key, item in current_dict.items():
-        assert np.allclose(current_dict[key],
-                           load_data[key][:, 0] / MC_GROUPS[0])
+        tau_arr, k_arr)
+    assert np.allclose(current_arr.sum(axis=1),
+                       load_data['gen_current'][:, 0] / MC_GROUPS[0])
 
 
 if __name__ == '__main__':

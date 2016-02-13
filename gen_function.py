@@ -38,51 +38,35 @@ def prepare_stress(rough_time, rough_stress):
 
 
 # %% Convert stress to current
-def stress_to_current(fine_time, fine_stress, tau_nr, tau_mc, tau_ad,
-                      k_nr, k_nr_1, k_mc, k_mc_1, k_ad, k_ad_1):
+def stress_to_current(fine_time, fine_stress, tau_arr, k_arr):
     """
     Generate current from the stress of a single Merkel cell.
 
     Parameters
     ----------
-    fine_time : 1d-array
-        Timecourse of the indentation process.
-    fine_stress : 1d-array
+    fine_time : 1xM array
+        Time array of the indentation process.
+    fine_stress : 1xM array
         Stress from a single Merkel cell.
-    tau_nr, tau_mc, tau_ad : double
-        Decay time constant for the neurite/Merkel cell/adaptation mechanism.
-    k_nr, k_mc, k_ad : double
-        Peak/steady ratio for the neurite/Merkel cell/adaptation mechanism.
-    k_mc_1, k_nr_1, k_ad_1 : double
-        1st sub-component of the `k_mc`, `k_nr`, and `k_ad`.
+    tau_arr : 1xN array
+        Decay time constant for different adaptation mechanisms:
+            tau_0, tau_1., ...., tau_inf
+    k_arr : 1xN array
+        Peak/steady ratio for different adaptation mechanisms.
 
     Returns
     -------
-    current_dict : dict
-        Generator current from the generator function.
-        'gen' : output total generator current
-        'mc' : output Merkel cell mechanism current
-        'nr' : output neurite mechanism current
-        'ad' : output adaptation mechanism current
+    current_arr : MxN array
+        Generator current array from the generator function;
+        each column represent one component.
     """
     ds = np.r_[0, np.diff(fine_stress)]
-
-    def get_subcurrent(k, k_sub_list, tau):
-        k_func = k * (k_sub_list[0] * np.exp(-fine_time / tau) + k_sub_list[1])
-        current = np.convolve(k_func, ds, mode='full')[:fine_time.shape[0]]
-        current[current < 0] = 0
-        return current
-    # Gen current
-    mc_current = get_subcurrent(k_mc, [k_mc_1, 1 - k_mc_1], tau_mc)
-    nr_current = get_subcurrent(k_nr, [k_nr_1, 1 - k_nr_1], tau_nr)
-    ad_current = get_subcurrent(k_ad, [k_ad_1, 1 - k_ad_1], tau_ad)
-    gen_current = mc_current + nr_current + ad_current
-    current_dict = {}
-    key = None  # Such that locals() won't change size during runtime
-    for key in locals():
-        if '_current' in key:
-            current_dict[key] = locals()[key]
-    return current_dict
+    k_func_arr = k_arr * np.exp(np.divide(-fine_time[None].T, tau_arr))
+    current_arr = np.column_stack(
+        [np.convolve(k_func_col, ds, mode='full')[:fine_time.size]
+         for k_func_col in k_func_arr.T])
+    current_arr[current_arr < 0] = 0
+    return current_arr
 
 
 # %% Main function
