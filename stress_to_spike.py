@@ -65,7 +65,7 @@ def spike_time_to_trace(spike_time):
 def spike_time_to_inst_fr(spike_time):
     spike_time = np.array(spike_time)
     spike_trace = spike_time_to_trace(spike_time)
-    inst_fr = np.r_[0, 1000 / np.diff(spike_time)]
+    inst_fr = np.r_[0, 1 / np.diff(spike_time)]
     inst_fr_index = spike_trace[:, 1].nonzero()[0]
     inst_fr_time = inst_fr_index * LIF_RESOLUTION
     return (inst_fr_time, inst_fr)
