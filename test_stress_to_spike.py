@@ -18,14 +18,14 @@ def load_data():
 def test_stress_to_group_current(load_data):
     group_gen_current = stress_to_group_current(
         load_data['fine_time'], load_data['fine_stress'], MC_GROUPS, **params)
-    assert np.allclose(group_gen_current, load_data['group_gen_current'] * 1e9)
+    assert np.allclose(group_gen_current, load_data['group_gen_current'])
 
 
 def test_stress_to_spike(load_data):
     inst_fr_time, inst_fr = stress_to_inst_fr(
         load_data['fine_time'], load_data['fine_stress'], MC_GROUPS, **params)
     assert np.allclose(load_data['inst_fr_time'], inst_fr_time)
-    assert np.allclose(load_data['inst_fr'], inst_fr * 1e3)
+    assert np.allclose(load_data['inst_fr'], inst_fr)
 
 
 if __name__ == '__main__':

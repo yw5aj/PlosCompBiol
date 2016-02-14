@@ -16,7 +16,7 @@ def load_data():
 
 
 def test_lif_model(load_data):
-    gen_current = load_data['group_gen_current'] * 1e9
+    gen_current = load_data['group_gen_current']
     spike_time = load_data['spike_time']
     py_spike_time = np.array(lif_model.get_spikes(gen_current))
     cy_spike_time = np.array(cy_lif_model.get_spikes(gen_current))
