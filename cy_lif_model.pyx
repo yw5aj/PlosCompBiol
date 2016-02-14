@@ -120,7 +120,7 @@ cpdef list get_spikes(double [:, ::1] current):
     cdef double ini_time = 0.0
     cdef double integration_start = 0.0
     cdef double [::1] timestamp_finalpot = np.zeros(2)
-    cdef unsigned int trace_length = <unsigned int>(DURATION // LIF_RESOLUTION
+    cdef unsigned int trace_length = <unsigned int>(DURATION / LIF_RESOLUTION
                                                     + 1)
     cdef list spike_time = []
     cdef double larger_time

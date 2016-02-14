@@ -2,11 +2,11 @@ import numpy as np
 import pytest
 import os
 
-import lif_model
-from setup_test_data import load_test_data
-
 import setpyximport
 import cy_lif_model
+
+import lif_model
+from setup_test_data import load_test_data
 
 
 @pytest.fixture(scope='module')
@@ -16,12 +16,13 @@ def load_data():
 
 
 def test_lif_model(load_data):
-    gen_current = load_data['group_gen_current']
+    gen_current = load_data['group_gen_current'] * 1e9
     spike_time = load_data['spike_time']
     py_spike_time = np.array(lif_model.get_spikes(gen_current))
     cy_spike_time = np.array(cy_lif_model.get_spikes(gen_current))
-    assert np.all(spike_time == py_spike_time)
-    assert np.all(spike_time == cy_spike_time)
+    assert np.allclose(py_spike_time, cy_spike_time)
+    assert np.allclose(spike_time, py_spike_time)
+    assert np.allclose(spike_time, cy_spike_time)
 
 
 if __name__ == '__main__':
