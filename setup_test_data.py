@@ -14,8 +14,8 @@ TEST_DATA_PATH = './csvs/test/'
 
 # Commonly used constants
 params = {
-    'tau_arr': np.array([0.008, 1., 0.5, np.inf]),
-    'k_arr': np.array([1.35e-12, 1.5e-13, 2e-12, 1.5e-12])}
+    'tau_arr': np.array([8, 500, 1000, np.inf]),
+    'k_arr': np.array([1.35e-3, 2e-3, 1.5e-4, 1.5e-3])}
 
 
 def load_test_data(vname_list):
