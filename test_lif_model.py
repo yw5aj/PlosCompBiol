@@ -11,12 +11,12 @@ import cy_lif_model
 
 @pytest.fixture(scope='module')
 def load_data():
-    vname_list = ['gen_current', 'spike_time']
+    vname_list = ['group_gen_current', 'spike_time']
     return load_test_data(vname_list)
 
 
 def test_lif_model(load_data):
-    gen_current = load_data['gen_current']
+    gen_current = load_data['group_gen_current']
     spike_time = load_data['spike_time']
     py_spike_time = np.array(lif_model.get_spikes(gen_current))
     cy_spike_time = np.array(cy_lif_model.get_spikes(gen_current))
