@@ -4,7 +4,7 @@ import shutil
 
 from stress_to_spike import stress_to_group_current
 from gen_function import stress_to_current
-import lif_model
+import cy_lif_model as lif_model
 from model_constants import MC_GROUPS
 from stress_to_spike import stress_to_inst_fr
 
@@ -15,7 +15,7 @@ TEST_DATA_PATH = './csvs/test/'
 # Commonly used constants
 params = {
     'tau_arr': np.array([8, 500, 1000, np.inf]),
-    'k_arr': np.array([1.35e-3, 2e-3, 1.5e-4, 1.5e-3])}
+    'k_arr': np.array([1.35, 2, .15, 1.5])}
 
 
 def load_test_data(vname_list):
