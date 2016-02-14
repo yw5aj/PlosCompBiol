@@ -16,7 +16,7 @@ def load_data():
 def test_stress_to_current(load_data):
     current_arr = stress_to_current(
         load_data['fine_time'], load_data['fine_stress'], **params)
-    assert np.allclose(current_arr, load_data['current_arr'] * 1e9)
+    assert np.allclose(current_arr, load_data['current_arr'])
 
 
 if __name__ == '__main__':

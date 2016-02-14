@@ -152,4 +152,8 @@ def get_moving_avg_noise(noise_size, window_size):
 
 # %% main function: test of LIF model
 if __name__ == '__main__':
-    pass
+    current = np.ones(5/LIF_RESOLUTION+1) * 5e-10
+    current = np.c_[current]
+    start_time = 0
+    mc_size = MC_GROUPS.shape[0]
+    time_pot = runge_kutta(current, start_time)

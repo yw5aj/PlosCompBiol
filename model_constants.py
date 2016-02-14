@@ -16,6 +16,6 @@ MC_GROUPS = np.array([8, 5, 3, 1])
 
 # %% LIF_PARAMS:
 #    threshold (mV)
-#    membrane capacitance (cm, in pF)
-#    membrane resistance (rm, in Gohm)
-LIF_PARAMS = np.array([30, 30, 1.667])
+#    membrane capacitance (cm, in mF)
+#    membrane resistance (rm, in ohm)
+LIF_PARAMS = np.array([30, 0.3e-7, 16.67e8])
