@@ -67,77 +67,17 @@ def spike_time_to_trace(spike_time):
 
 def spike_time_to_inst_fr(spike_time):
     spike_time = np.array(spike_time)
-    spike_trace = spike_time_to_trace(spike_time)
     inst_fr = np.r_[0, 1 / np.diff(spike_time)]
-    inst_fr_index = spike_trace[:, 1].nonzero()[0]
-    inst_fr_time = inst_fr_index * LIF_RESOLUTION
-    return (inst_fr_time, inst_fr)
+    return inst_fr
 
 
 def stress_to_inst_fr(fine_time, fine_stress, groups, **params):
     group_gen_current = stress_to_group_current(fine_time, fine_stress,
                                                 groups, **params)
     spike_time = get_spikes(group_gen_current)
-    return spike_time_to_inst_fr(spike_time)
+    return np.array(spike_time), spike_time_to_inst_fr(spike_time)
 
 
 # %% Main function
 if __name__ == '__main__':
-    # %% For disp control input
-    fine_stress = np.genfromtxt('./data/fem/dcon_disp3_stress.csv',
-                                delimiter=',')
-    fine_time = np.genfromtxt('./data/fem/dcon_disp3_time.csv',
-                              delimiter=',')
-    # %% Generator function decay parameters
-    gen_current = stress_to_group_current(fine_time, fine_stress,
-                                          tau1_m, tau2_ap2, k1_ap2,
-                                          'nr', MC_GROUPS)
-    # %% Current to spike calculation
-    spike_time = np.array(get_spikes(gen_current))
-    spike_trace = spike_time_to_trace(spike_time)
-    inst_fr = np.r_[0, 1000/np.diff(spike_time)]
-    inst_fr_index = spike_trace[:, 1].nonzero()[0]
-    inst_fr_time = inst_fr_index * LIF_RESOLUTION
-    # %% Firing rate calculations for disp and force control
-    # Get ramp-up fr
-    max_index = np.argmax(fine_stress)
-    ramp_index = spike_trace[0:max_index, 1].nonzero()[0]
-    ramp_spike_time = spike_trace[ramp_index, 0]
-    ramp_fr = np.mean(1000/np.diff(ramp_spike_time))
-    # Get early-hold fr
-    early_index = spike_trace[max_index:max_index+500, 1].nonzero()[0]
-    early_spike_time = spike_trace[early_index, 0]
-    early_fr = np.mean(1000/np.diff(early_spike_time))
-    # Get late-hold fr
-    late_index = spike_trace[2000/LIF_RESOLUTION:4500/LIF_RESOLUTION, 1]. \
-        nonzero()[0]
-    late_spike_time = spike_trace[late_index, 0]
-    late_fr = np.mean(1000/np.diff(late_spike_time))
-    print('ramp fr = ', ramp_fr)
-    print('early hold fr = ', early_fr)
-    print('late hold fr = ', late_fr)
-    # %% Plot
-    fig, axs = plt.subplots()
-    stress_plot = axs.plot(fine_time, fine_stress / 600, 'b',
-                           label='scaled stress')
-    current_plot = axs.plot(fine_time[:50000], gen_current[:50000, 0]*1e8, 'k',
-                            label='scaled current')
-    instfr_plot = axs.plot(inst_fr_time/1000, inst_fr*1, 'g.',
-                           label='instant fr')
-    spike_plot = axs.plot(spike_trace[:, 0]/1000, spike_trace[:, 1],
-                          label='spikes', color='r')
-    # %% Save files
-    np.savetxt('./data/output/ap2_disp3_nr_spike_time.csv',
-               spike_trace[:, 0]/1000, delimiter=',')
-    np.savetxt('./data/output/ap2_disp3_nr_spike_spike.csv', spike_trace[:, 1],
-               delimiter=',')
-    np.savetxt('./data/output/ap2_disp3_nr_inst_fr_time.csv',
-               inst_fr_time/1000, delimiter=',')
-    np.savetxt('./data/output/ap2_disp3_nr_inst_fr_fr.csv',
-               inst_fr, delimiter=',')
-    np.savetxt('./data/output/ap2_disp3_nr_spike.csv',
-               spike_time/1000, delimiter=',')
-    np.savetxt('./data/output/ap2_disp3_nr_current.csv',
-               gen_current/8, delimiter=',')
-#    np.savetxt('disp2_stress.csv', fine_stress, delimiter=',')
-#    np.savetxt('disp2_time.csv', fine_time, delimiter=',')
+    pass

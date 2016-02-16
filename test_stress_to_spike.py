@@ -10,7 +10,7 @@ from stress_to_spike import stress_to_inst_fr, stress_to_group_current
 
 @pytest.fixture(scope='module')
 def load_data():
-    vname_list = ['fine_time', 'fine_stress', 'inst_fr_time', 'inst_fr',
+    vname_list = ['fine_time', 'fine_stress', 'spike_time', 'inst_fr',
                   'group_gen_current']
     return load_test_data(vname_list)
 
@@ -22,9 +22,9 @@ def test_stress_to_group_current(load_data):
 
 
 def test_stress_to_spike(load_data):
-    inst_fr_time, inst_fr = stress_to_inst_fr(
+    spike_time, inst_fr = stress_to_inst_fr(
         load_data['fine_time'], load_data['fine_stress'], MC_GROUPS, **params)
-    assert np.allclose(load_data['inst_fr_time'], inst_fr_time)
+    assert np.allclose(load_data['spike_time'], spike_time)
     assert np.allclose(load_data['inst_fr'], inst_fr)
 
 

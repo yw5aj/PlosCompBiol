@@ -51,7 +51,7 @@ def setup_gen_function(data):
 
 
 def setup_stress_to_spike(data):
-    data['inst_fr_time'], data['inst_fr'] = stress_to_inst_fr(
+    data['spike_time'], data['inst_fr'] = stress_to_inst_fr(
         data['fine_time'], data['fine_stress'], MC_GROUPS, **params)
 
 

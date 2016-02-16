@@ -22,6 +22,7 @@ stim_list_dict = {
     'Piezo2CONT': [(101, 2), (101, 1), (101, 3)],
     'Piezo2CKO': [(201, 2), (201, 7), (201, 4)],
     'Atoh1CKO': [(101, 2), (101, 1), (101, 5)]}
+stim_num = len(next(iter(stim_list_dict.values())))
 
 
 def extract_trace_arr_dict(data_dict, stim_list, fs):
@@ -46,7 +47,7 @@ def save_arr_dict_to_csv(arr_dict, animal):
         np.savetxt(fname, item, delimiter=',')
 
 
-def export_all_to_csv(animal_list, mat_fname_dict, stim_list_dict, fs):
+def export_trace_to_csv(animal_list, mat_fname_dict, stim_list_dict, fs):
     trace_arr_dict_dict = {animal: [] for animal in animal_list}
     for (i, animal) in enumerate(animal_list):
         mat_fname = mat_fname_dict[animal]
@@ -56,6 +57,22 @@ def export_all_to_csv(animal_list, mat_fname_dict, stim_list_dict, fs):
         save_arr_dict_to_csv(trace_arr_dict, animal)
         trace_arr_dict_dict[animal] = trace_arr_dict
     return trace_arr_dict_dict
+
+
+def get_inst_fr(time, spike):
+    dt = time[1] - time[0]
+    spike_time = spike.nonzero()[0] * dt
+    inst_fr = np.r_[0, 1 / np.diff(spike_time)]
+    return spike_time, inst_fr
+
+
+def export_inst_fr_to_csv(trace_arr_dict_dict):
+    for animal, trace_arr_dict in trace_arr_dict_dict.items():
+        for i in range(stim_num):
+            spike_time, inst_fr = get_inst_fr(trace_arr_dict['time'].T[i],
+                                              trace_arr_dict['spike'].T[i])
+            np.savetxt('./%s_fr_%d.csv' % (animal, i),
+                       np.c_[spike_time, inst_fr], delimiter=',')
 
 
 def plot_all(trace_arr_dict_dict):
@@ -69,6 +86,7 @@ def plot_all(trace_arr_dict_dict):
 
 
 if __name__ == '__main__':
-    trace_arr_dict_dict = export_all_to_csv(
+    trace_arr_dict_dict = export_trace_to_csv(
         animal_list, mat_fname_dict, stim_list_dict, fs)
     plot_all(trace_arr_dict_dict)
+    export_inst_fr_to_csv(trace_arr_dict_dict)

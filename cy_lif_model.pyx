@@ -8,7 +8,7 @@
 import numpy as np
 cimport numpy as np
 import model_constants
-from libc.math cimport fmax, round
+from libc.math cimport fmax
 
 
 #%% Define imported constants
@@ -129,7 +129,6 @@ cpdef list get_spikes(double [:, ::1] current):
         timestamp_finalpot = runge_kutta(current[0:trace_length, :],
                                          integration_start)
         larger_time = fmax(timestamp_finalpot[0], ini_time + REFRACTORY_PERIOD)
-        larger_time = round(larger_time / LIF_RESOLUTION) * LIF_RESOLUTION
         if timestamp_finalpot[1] > threshold:
             spike_time.append(larger_time)
         ini_time = LIF_RESOLUTION + larger_time
