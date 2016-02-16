@@ -9,7 +9,7 @@ from model_constants import MC_GROUPS
 from stress_to_spike import stress_to_inst_fr
 
 
-TEST_DATA_PATH = './csvs/test/'
+TEST_DATA_PATH = './data/test/'
 
 
 # Commonly used constants
@@ -38,9 +38,9 @@ def setup_lif_model(data):
 
 
 def copy_stress():
-    shutil.copy('./csvs/fem/dcon_disp3_stress.csv',
+    shutil.copy('./data/fem/dcon_disp3_stress.csv',
                 TEST_DATA_PATH + 'fine_stress.csv')
-    shutil.copy('./csvs/fem/dcon_disp3_time.csv',
+    shutil.copy('./data/fem/dcon_disp3_time.csv',
                 TEST_DATA_PATH + 'fine_time.csv')
 
 

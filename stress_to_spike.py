@@ -84,9 +84,9 @@ def stress_to_inst_fr(fine_time, fine_stress, groups, **params):
 # %% Main function
 if __name__ == '__main__':
     # %% For disp control input
-    fine_stress = np.genfromtxt('./csvs/fem/dcon_disp3_stress.csv',
+    fine_stress = np.genfromtxt('./data/fem/dcon_disp3_stress.csv',
                                 delimiter=',')
-    fine_time = np.genfromtxt('./csvs/fem/dcon_disp3_time.csv',
+    fine_time = np.genfromtxt('./data/fem/dcon_disp3_time.csv',
                               delimiter=',')
     # %% Generator function decay parameters
     gen_current = stress_to_group_current(fine_time, fine_stress,
@@ -127,17 +127,17 @@ if __name__ == '__main__':
     spike_plot = axs.plot(spike_trace[:, 0]/1000, spike_trace[:, 1],
                           label='spikes', color='r')
     # %% Save files
-    np.savetxt('./csvs/output/ap2_disp3_nr_spike_time.csv',
+    np.savetxt('./data/output/ap2_disp3_nr_spike_time.csv',
                spike_trace[:, 0]/1000, delimiter=',')
-    np.savetxt('./csvs/output/ap2_disp3_nr_spike_spike.csv', spike_trace[:, 1],
+    np.savetxt('./data/output/ap2_disp3_nr_spike_spike.csv', spike_trace[:, 1],
                delimiter=',')
-    np.savetxt('./csvs/output/ap2_disp3_nr_inst_fr_time.csv',
+    np.savetxt('./data/output/ap2_disp3_nr_inst_fr_time.csv',
                inst_fr_time/1000, delimiter=',')
-    np.savetxt('./csvs/output/ap2_disp3_nr_inst_fr_fr.csv',
+    np.savetxt('./data/output/ap2_disp3_nr_inst_fr_fr.csv',
                inst_fr, delimiter=',')
-    np.savetxt('./csvs/output/ap2_disp3_nr_spike.csv',
+    np.savetxt('./data/output/ap2_disp3_nr_spike.csv',
                spike_time/1000, delimiter=',')
-    np.savetxt('./csvs/output/ap2_disp3_nr_current.csv',
+    np.savetxt('./data/output/ap2_disp3_nr_current.csv',
                gen_current/8, delimiter=',')
 #    np.savetxt('disp2_stress.csv', fine_stress, delimiter=',')
 #    np.savetxt('disp2_time.csv', fine_time, delimiter=',')
