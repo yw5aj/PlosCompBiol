@@ -12,6 +12,7 @@ import setpyximport
 from cy_lif_model import get_spikes
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from model_constants import (LIF_RESOLUTION, DURATION, MC_GROUPS)
 from gen_function import stress_to_current
@@ -65,17 +66,24 @@ def spike_time_to_trace(spike_time):
     return spike_trace
 
 
-def spike_time_to_inst_fr(spike_time):
+def spike_time_to_fr_roll(spike_time, window_size):
     spike_time = np.array(spike_time)
-    inst_fr = np.r_[0, 1 / np.diff(spike_time)]
-    return inst_fr
+    isi_inst = np.r_[np.inf, np.diff(spike_time)]
+    isi_roll = pd.rolling_mean(isi_inst, window_size)
+    isi_roll[np.isnan(isi_roll)] = np.inf
+    fr_roll = 1 / isi_roll
+    return fr_roll
 
 
-def stress_to_inst_fr(fine_time, fine_stress, groups, **params):
+def spike_time_to_fr_inst(spike_time):
+    return spike_time_to_fr_roll(spike_time, 1)
+
+
+def stress_to_fr_inst(fine_time, fine_stress, groups, **params):
     group_gen_current = stress_to_group_current(fine_time, fine_stress,
                                                 groups, **params)
     spike_time = get_spikes(group_gen_current)
-    return np.array(spike_time), spike_time_to_inst_fr(spike_time)
+    return np.array(spike_time), spike_time_to_fr_inst(spike_time)
 
 
 # %% Main function

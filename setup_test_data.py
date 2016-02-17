@@ -6,7 +6,7 @@ from stress_to_spike import stress_to_group_current
 from gen_function import stress_to_current
 import cy_lif_model as lif_model
 from model_constants import MC_GROUPS
-from stress_to_spike import stress_to_inst_fr
+from stress_to_spike import stress_to_fr_inst
 
 
 TEST_DATA_PATH = './data/test/'
@@ -51,7 +51,7 @@ def setup_gen_function(data):
 
 
 def setup_stress_to_spike(data):
-    data['spike_time'], data['inst_fr'] = stress_to_inst_fr(
+    data['spike_time'], data['fr_inst'] = stress_to_fr_inst(
         data['fine_time'], data['fine_stress'], MC_GROUPS, **params)
 
 
