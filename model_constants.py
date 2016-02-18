@@ -8,6 +8,7 @@ This module contains all the constants needed in the LIF Model calculation.
 """
 
 import numpy as np
+import os
 
 LIF_RESOLUTION = 0.1  # in msec
 DURATION = 5000  # in msec
@@ -32,3 +33,8 @@ STIM_LIST_DICT = {
     'Piezo2CKO': [(201, 2), (201, 7), (201, 4)],
     'Atoh1CKO': [(101, 2), (101, 1), (101, 5)]}
 STIM_NUM = len(next(iter(STIM_LIST_DICT.values())))
+
+# FEM constants
+fe_id_list = [int(fname[10:12])
+              for fname in os.listdir('data/fem') if fname.endswith('csv')]
+FE_NUM = np.max(fe_id_list) + 1

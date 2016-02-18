@@ -10,12 +10,29 @@ The input of the function is stress, and output is current.
 """
 
 import numpy as np
+import os
 from scipy.interpolate import interp1d
-from model_constants import LIF_RESOLUTION
+from model_constants import LIF_RESOLUTION, FE_NUM
 
 
 # %% Generate Fine stress
-def prepare_stress(rough_time, rough_stress):
+def get_fine_stress():
+    rough_time, rough_stress = load_stress()
+    fine_time, fine_stress = interpolate_stress(rough_time, rough_stress)
+    return fine_time, fine_stress
+
+
+def load_stress(fe_id=FE_NUM - 1):
+    fname = 'TipOneFive%02dDispl.csv' % fe_id
+    pname = os.path.join('data', 'fem', fname)
+    time, force, displ, stress, strain, sener = np.genfromtxt(
+        pname, delimiter=',').T
+    time *= 1e3  # sec to msec
+    stress *= 1e-3  # Pa to kPa
+    return time, stress
+
+
+def interpolate_stress(rough_time, rough_stress):
     """
     Generate fine stress from rough stress using Linear Spline.
 
@@ -31,7 +48,7 @@ def prepare_stress(rough_time, rough_stress):
     output_time_stress : 2d-array
         Fine time and Fine stress from Linear Spline of rough time and stress.
     """
-    fine_time = np.arange(0, rough_time[-1], LIF_RESOLUTION * 1e-3)
+    fine_time = np.arange(0, rough_time[-1], LIF_RESOLUTION)
     fine_spline = interp1d(rough_time, rough_stress, kind='linear')
     fine_stress = fine_spline(fine_time)
     return fine_time, fine_stress

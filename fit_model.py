@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from stress_to_spike import (stress_to_fr_inst, spike_time_to_fr_roll,
                              spike_time_to_fr_inst)
 from model_constants import MC_GROUPS, FS, ANIMAL_LIST, STIM_NUM
+from gen_function import get_fine_stress
 
 
 def get_single_residual(lmpars, groups,
@@ -21,6 +22,7 @@ def get_single_residual(lmpars, groups,
     mod_fr_inst_interp = np.interp(rec_spike_time,
                                    mod_spike_time, mod_fr_inst)
     residual = mod_fr_inst_interp - rec_fr_inst
+    print((residual**2).sum())
     return residual
 
 
@@ -94,22 +96,34 @@ def adjust_stress_ramp_time(time, stress, max_time_target):
 
 
 if __name__ == '__main__':
-    from setup_test_data import load_test_data
-    vname_list = ['fine_time', 'fine_stress']
-    data = load_test_data(vname_list)
-    # %%
-    time = data['fine_time']
-    stress = data['fine_stress']
+    time, stress = get_fine_stress()
     groups = MC_GROUPS
     lmpars = Parameters()
-    lmpars.add_many(('tau1', 8), ('tau2', 500),
-                    ('tau3', 1000), ('tau4', np.inf),
-                    ('k1', 1.35), ('k2', 2), ('k3', .15), ('k4', 1.5))
+    lmpars.add_many(('tau1', 8, False, 0, None),
+                    ('tau2', 500, False, 0, None),
+                    ('tau3', 1000, False, 0, None),
+                    ('tau4', np.inf, False, 0, None),
+                    ('k1', .025, True, 0, None),
+                    ('k2', .05, True, 0, None),
+                    ('k3', .004, True, 0, None),
+                    ('k4', 0.04, True, 0, None))
     animal = 'Piezo2CONT'
     rec_dict = load_rec(animal)
     rec_fr_inst = rec_dict['fr_inst_list'][-1]
     rec_spike_time = rec_dict['spike_time_list'][-1]
     max_time = rec_dict['max_time_list'][-1]
     stress = adjust_stress_ramp_time(time, stress, max_time)
-    residual = get_single_residual(lmpars, groups,
-                        time, stress, rec_spike_time, rec_fr_inst)
+    # %% Try to minimize one single trace
+    res = minimize(get_single_residual, lmpars,
+                   args=(groups, time, stress, rec_spike_time, rec_fr_inst),
+                   epsfcn=1e-4)
+    # %% Plot the fitting result
+    lmpars_fit = res.params
+    mod_spike_time, mod_fr_inst = get_mod_spike(lmpars_fit, groups,
+                                                time, stress)
+    fig, axs = plt.subplots()
+    axs.plot(mod_spike_time, mod_fr_inst * 1e3, '-r', label='Experiment')
+    axs.plot(rec_spike_time, rec_fr_inst * 1e3, '.k', label='Model')
+    axs.set_xlabel('Time (msec)')
+    axs.set_ylabel('Instantaneous firing (Hz)')
+    fig.tight_layout()

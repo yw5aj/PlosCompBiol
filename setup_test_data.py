@@ -38,9 +38,9 @@ def setup_lif_model(data):
 
 
 def copy_stress():
-    shutil.copy('./data/fem/dcon_disp3_stress.csv',
+    shutil.copy('./data/fem/LindsayThesisData/dcon_disp3_stress.csv',
                 TEST_DATA_PATH + 'fine_stress.csv')
-    shutil.copy('./data/fem/dcon_disp3_time.csv',
+    shutil.copy('./data/fem/LindsayThesisData/dcon_disp3_time.csv',
                 TEST_DATA_PATH + 'fine_time.csv')
 
 
