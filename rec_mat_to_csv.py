@@ -66,8 +66,12 @@ def plot_trace(trace_arr_dict_dict):
     for animal, trace_arr_dict in trace_arr_dict_dict.items():
         for key, trace_arr in trace_arr_dict.items():
             if key != 'time':
-                fig, axs = plt.subplots()
-                axs.plot(trace_arr)
+                fig, axs = plt.subplots(figsize=(7, 7))
+                if key == 'spike':
+                    for i in range(trace_arr.shape[1]):
+                        axs.plot(trace_arr[:, i] + 10 - i * 2)
+                else:
+                    axs.plot(trace_arr)
                 fig.savefig('./data/rec/plots/%s_%s.png' % (animal, key),
                             dpi=300)
                 plt.close(fig)

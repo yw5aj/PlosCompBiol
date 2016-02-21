@@ -16,20 +16,76 @@ from model_constants import LIF_RESOLUTION, FE_NUM
 
 
 # %% Generate Fine stress
-def get_fine_stress():
-    rough_time, rough_stress = load_stress()
+def get_single_fine_stress(fe_id):
+    rough_time, rough_displ, rough_stress = get_single_rough_fea(fe_id)
     fine_time, fine_stress = interpolate_stress(rough_time, rough_stress)
-    return fine_time, fine_stress
+    fine_time, fine_displ = interpolate_stress(rough_time, rough_displ)
+    return fine_time, fine_displ, fine_stress
 
 
-def load_stress(fe_id=FE_NUM - 1):
+def get_single_rough_fea(fe_id):
     fname = 'TipOneFive%02dDispl.csv' % fe_id
     pname = os.path.join('data', 'fem', fname)
     time, force, displ, stress, strain, sener = np.genfromtxt(
         pname, delimiter=',').T
     time *= 1e3  # sec to msec
     stress *= 1e-3  # Pa to kPa
+    displ *= 1e3  # m to mm
+    return time, displ, stress
+
+
+def get_interp_stress(static_displ):
+    """
+    Get interpolated stress from FE model.
+
+    Parameters
+    ----------
+    static_displ : float
+        The steady-state displ to scale the stress.
+
+    Returns
+    -------
+    time : 1xN array
+        Time array corresponding with the stress.
+    stress : 1xN array
+        Stress array.
+    """
+    time, static_displ_arr, stress_table = get_stress_table()
+    stress = np.empty_like(time)
+    for i in range(stress.size):
+        stress[i] = np.interp(static_displ, static_displ_arr, stress_table[i])
     return time, stress
+
+
+def get_stress_table(fe_num=FE_NUM):
+    """
+    Parameters
+    ----------
+    fe_num : int
+        Total number of fe runs.
+
+    Returns
+    -------
+    time : 1xN array
+        Time points.
+
+    static_displ_arr : 1xM array
+        A list for static displacements.
+
+    stress_table : NxM array
+        A table with columns as stress traces for each displacement.
+    """
+    time_list, displ_list, stress_list = [], [], []
+    for fe_id in range(fe_num):
+        time, displ, stress = get_single_fine_stress(fe_id)
+        time_list.append(time)
+        displ_list.append(displ)
+        stress_list.append(stress)
+    size_min = np.min([time.size for time in time_list])
+    stress_table = np.column_stack(
+        [np.zeros(size_min)] + [stress[:size_min] for stress in stress_list])
+    static_displ_arr = np.r_[0, [displ[-1] for displ in displ_list]]
+    return time[:size_min], static_displ_arr, stress_table
 
 
 def interpolate_stress(rough_time, rough_stress):

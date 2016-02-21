@@ -31,12 +31,15 @@ MAT_FNAME_DICT = {
     'Piezo2CKO': '2013-12-13-02Piezo2CKO_calibrated.mat',
     'Atoh1CKO': '2013-10-16-01Atoh1CKO_calibrated.mat'}
 STIM_LIST_DICT = {
-    'Piezo2CONT': [(101, 2), (101, 1), (101, 3)],
+    'Piezo2CONT': [(101, 2), (101, 3), (101, 1)],
     'Piezo2CKO': [(201, 2), (201, 7), (201, 4)],
     'Atoh1CKO': [(101, 2), (101, 1), (101, 5)]}
 STIM_NUM = len(next(iter(STIM_LIST_DICT.values())))
+REF_STIM = 0
+WINDOW = 5
 
 # %% FEM constants
 fe_id_list = [int(fname[10:12])
               for fname in os.listdir('data/fem') if fname.endswith('csv')]
 FE_NUM = np.max(fe_id_list) + 1
+REF_DISPL = .6
