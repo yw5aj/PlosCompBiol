@@ -3,6 +3,11 @@
 *.txt
 *.csv
 
+# MS Office files
+*.ppt*
+*.xls*
+*.doc*
+
 # Temp files
 *.rpy*
 *.pyc
