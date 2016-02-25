@@ -3,14 +3,14 @@ import numpy as np
 import pytest
 import os
 
-from setup_test_data import load_test_data, params
+from setup_test_data import load_test_csv, params
 from gen_function import stress_to_current
 
 
 @pytest.fixture(scope='module')
 def load_data():
     vname_list = ['fine_stress', 'fine_time', 'current_arr']
-    return load_test_data(vname_list)
+    return load_test_csv(vname_list)
 
 
 def test_stress_to_current(load_data):

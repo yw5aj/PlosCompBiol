@@ -4,7 +4,7 @@ import os
 import numpy as np
 
 from model_constants import MC_GROUPS
-from setup_test_data import load_test_data, params
+from setup_test_data import load_test_csv, params
 from stress_to_spike import stress_to_fr_inst, stress_to_group_current
 
 
@@ -12,7 +12,7 @@ from stress_to_spike import stress_to_fr_inst, stress_to_group_current
 def load_data():
     vname_list = ['fine_time', 'fine_stress', 'spike_time', 'fr_inst',
                   'group_gen_current']
-    return load_test_data(vname_list)
+    return load_test_csv(vname_list)
 
 
 def test_stress_to_group_current(load_data):

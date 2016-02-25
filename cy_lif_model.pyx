@@ -79,8 +79,7 @@ cpdef double [::1] runge_kutta(double [:, ::1] current, double start_time):
     cdef double k2 = 0.
     cdef double k3 = 0.
     cdef double k4 = 0.
-    cdef unsigned int i, j
-    cdef unsigned int end_pot_argmax
+    cdef unsigned int i
     while temp_time <= time_span - h:
         for i in range(mc_size):
             mid_current = 0.5 * (current[current_index, i] +

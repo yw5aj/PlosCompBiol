@@ -70,7 +70,7 @@ def runge_kutta(current, start_time):
     k2 = 0.
     k3 = 0.
     k4 = 0.
-    output = np.zeros(4)
+    output = np.zeros(2)
     while temp_time <= time_span-h:
         for i in range(mc_size):
             mid_current = 0.5 * (current[current_index, i] +
@@ -110,7 +110,7 @@ def get_spikes(current):
     ini_time = 0.0
     integration_start = 0.0
     timestamp_finalpot = np.zeros([2])
-    trace_length = DURATION / LIF_RESOLUTION + 1
+    trace_length = int(DURATION / LIF_RESOLUTION + 1)
     spike_time = []
     larger_time = 0.0
     while ini_time <= DURATION:
@@ -119,7 +119,6 @@ def get_spikes(current):
                                          integration_start)
         larger_time = np.max([timestamp_finalpot[0],
                               ini_time + REFRACTORY_PERIOD])
-        larger_time = np.round(larger_time / LIF_RESOLUTION) * LIF_RESOLUTION
         if timestamp_finalpot[1] > threshold:
             spike_time.append(larger_time)
         ini_time = LIF_RESOLUTION + larger_time

@@ -120,8 +120,9 @@ def adjust_stress_ramp_time(time, stress, max_time_spike, stretch_coeff=1.25):
     return stress_new
 
 
-def get_data_dicts(animal, stim, static_displ):
-    rec_dict = load_rec(animal)
+def get_data_dicts(animal, stim, static_displ, rec_dict=None):
+    if rec_dict is None:
+        rec_dict = load_rec(animal)
     # Read recording data
     rec_fr_inst = rec_dict['fr_inst_list'][stim]
     rec_spike_time = rec_dict['spike_time_list'][stim]
@@ -170,11 +171,15 @@ def plot_single_fit(lmpars_fit, groups, time, stress,
     return fig, axs
 
 
+def get_time_stamp():
+    time_stamp = ''.join(re.findall(
+        '\d+', str(datetime.datetime.now()))[:-1])
+    return time_stamp
+
+
 def export_fit_result(result, fit_data_dict, label_str=None):
     if label_str is None:
-        time_stamp = ''.join(re.findall(
-            '\d+', str(datetime.datetime.now()))[:-1])
-        label_str = time_stamp
+        label_str = get_time_stamp()
     fname_report = 'fit_report_%s.txt' % label_str
     fname_pickle = 'fit_result_%s.pkl' % label_str
     fname_plot = 'fit_plot_%s.png' % label_str
@@ -216,75 +221,105 @@ def fit_static_displ(lmdispl, lmpars, animal, stim):
     return result
 
 
+class FitApproach():
+
+    def __init__(self, lmpars_init, label=None):
+        self.lmpars_init = lmpars_init
+        if label is None:
+            self.label = get_time_stamp()
+        else:
+            self.label = label
+        # Load data
+        self.load_rec_dicts()
+
+    def load_rec_dicts(self):
+        self.rec_dicts = {animal: load_rec(animal) for animal in ANIMAL_LIST}
+
+    def get_data_dicts(self, animal, stim, static_displ):
+        data_dicts = get_data_dicts(animal, stim, static_displ,
+                                    self.rec_dicts[animal])
+        return data_dicts
+
+    def fit_ref(self, export=True, plot=False):
+        data_dicts = self.get_data_dicts('Piezo2CONT', REF_STIM, REF_DISPL)
+        self.ref_result = fit_single_rec(self.lmpars_init,
+                                         data_dicts['fit_data_dict'])
+        self.lmpars_fit = self.ref_result.params
+        if export:
+            export_fit_result(self.ref_result, data_dicts['fit_data_dict'],
+                              label_str=self.label)
+        if plot:
+            fig, axs = plot_single_fit(self.ref_result.params,
+                                       **data_dicts['fit_data_dict'])
+            return fig, axs
+
+
+# Define parameters for fitting
+# E.g., t3f1v23 means: 3 taus, fix tau1, vary tau2, tau3
+lmpars_init_dict = {}
+# Approach t2f12: use Adrienne's data
+lmpars = Parameters()
+lmpars.add('tau1', value=8, vary=False)
+lmpars.add('tau2', value=200, vary=False)
+lmpars.add('tau3', value=np.inf, vary=False)
+lmpars.add('k1', value=1, vary=True)
+lmpars.add('k2', value=.3, vary=True)
+lmpars.add('k3', value=.04, vary=True)
+lmpars_init_dict['t2f12'] = lmpars
+
+# Approach t2v12: let tau1 and tau2 float
+lmpars = Parameters()
+lmpars.add('tau1', value=8, vary=True, min=0, max=5000)
+lmpars.add('tau2', value=200, vary=True, min=0, max=5000)
+lmpars.add('tau3', value=np.inf, vary=False)
+lmpars.add('k1', value=1, vary=True)
+lmpars.add('k2', value=.3, vary=True)
+lmpars.add('k3', value=.04, vary=True)
+lmpars_init_dict['t2v12'] = lmpars
+
+# Approach t3f1v23: fix tau1 and float tau2, 3
+# Define lmpar
+lmpars = Parameters()
+lmpars.add('tau1', value=8, vary=False, min=0, max=5000)
+lmpars.add('tau2', value=200, vary=True, min=0, max=5000)
+lmpars.add('tau3', value=1000, vary=True, min=0, max=5000)
+lmpars.add('tau4', value=np.inf, vary=False)
+lmpars.add('k1', value=1., vary=True)
+lmpars.add('k2', value=.3, vary=True)
+lmpars.add('k3', value=.04, vary=True)
+lmpars.add('k4', value=.04, vary=True)
+lmpars_init_dict['t3f1v23'] = lmpars
+
+# Approach t3f123: add ultra-slow adapting constant and fix tau1, 2, 3
+lmpars = Parameters()
+lmpars.add('tau1', value=8, vary=False)
+lmpars.add('tau2', value=200, vary=False)
+lmpars.add('tau3', value=1832, vary=False)
+lmpars.add('tau4', value=np.inf, vary=False)
+lmpars.add('k1', value=1., vary=True)
+lmpars.add('k2', value=.3, vary=True)
+lmpars.add('k3', value=.04, vary=True)
+lmpars.add('k4', value=.04, vary=True)
+lmpars_init_dict['t3f123'] = lmpars
+
 if __name__ == '__main__':
-    # Load relavent data
-    ref_data_dicts = get_data_dicts('Piezo2CONT', REF_STIM, REF_DISPL)
-    # %% Approach 0: use Adrienne's data
-    # Define lmpar
-    lmpars = Parameters()
-    lmpars.add('tau1', value=8, vary=False)
-    lmpars.add('tau2', value=200, vary=False)
-    lmpars.add('tau3', value=np.inf, vary=False)
-    lmpars.add('k1', value=1, vary=True)
-    lmpars.add('k2', value=.25, vary=True)
-    lmpars.add('k3', value=.04, vary=True)
-    # Run fitting for the control standard
-    result = fit_single_rec(lmpars,
-                            ref_data_dicts['fit_data_dict'])
-    export_fit_result(result, ref_data_dicts['fit_data_dict'],
-                      'approach_0')
-    # %% Approach 1: let taus float
-    # Define lmpar
-    lmpars = Parameters()
-    lmpars.add('tau1', value=8, vary=True, min=0, max=5000)
-    lmpars.add('tau2', value=200, vary=True, min=0, max=5000)
-    lmpars.add('tau3', value=np.inf, vary=False)
-    lmpars.add('k1', value=1, vary=True)
-    lmpars.add('k2', value=.25, vary=True)
-    lmpars.add('k3', value=.04, vary=True)
-    # Run fitting for the control standard
-    result = fit_single_rec(lmpars,
-                            ref_data_dicts['fit_data_dict'])
-    export_fit_result(result, ref_data_dicts['fit_data_dict'],
-                      'approach_1')
-    # %% Approach 2: fix tau1 and float tau2, 3
-    # Define lmpar
-    lmpars = Parameters()
-    lmpars.add('tau1', value=8, vary=False, min=0, max=5000)
-    lmpars.add('tau2', value=200, vary=True, min=0, max=5000)
-    lmpars.add('tau3', value=1000, vary=True, min=0, max=5000)
-    lmpars.add('tau4', value=np.inf, vary=False)
-    lmpars.add('k1', value=1., vary=True)
-    lmpars.add('k2', value=.25, vary=True)
-    lmpars.add('k3', value=.05, vary=True)
-    lmpars.add('k4', value=.04, vary=True)
-    # Run fitting for the control standard
-    result = fit_single_rec(lmpars,
-                            ref_data_dicts['fit_data_dict'])
-    export_fit_result(result, ref_data_dicts['fit_data_dict'],
-                      'approach_2')
-    # %% Approach 4: add ultra-slow adapting constant
-    lmpars = Parameters()
-    lmpars.add('tau1', value=8, vary=False)
-    lmpars.add('tau2', value=200, vary=False)
-    lmpars.add('tau3', value=1832, vary=False)
-    lmpars.add('tau4', value=np.inf, vary=False)
-    lmpars.add('k1', value=1, vary=True)
-    lmpars.add('k2', value=.25, vary=True)
-    lmpars.add('k3', value=.05, vary=True)
-    lmpars.add('k4', value=.04, vary=True)
-    # Run fitting
-    result = fit_single_rec(lmpars,
-                            ref_data_dicts['fit_data_dict'])
-    export_fit_result(result, ref_data_dicts['fit_data_dict'],
-                      'approach_4')
-    """
-    # %% Playing with Approach 1
-    with open('data/fit/fit_result_approach_1.pkl', 'rb') as f:
+    run_fitting = True
+    # %%
+    if run_fitting:
+        fitApproach_dict = {}
+        for approach, lmpars_init in lmpars_init_dict.items():
+            fitApproach = FitApproach(lmpars_init, approach)
+            fitApproach.fit_ref()
+            fitApproach_dict[approach] = fitApproach
+
+    # %% Playing with Approach t3f123
+#    fitApproach = fitApproach_dict['t3f123']
+    with open('data/fit/fit_result_approach_t3f123.pkl', 'rb') as f:
         result = pickle.load(f)
-    lmpars = result.params
+    fitApproach.ref_result = result
+    fitApproach.lmpars_fit = result.params
     lmdispl = Parameters()
-    lmdispl.add('static_displ', value=.6, min=0, max=.6, vary=True)
-    plot_static_displ_to_mod_spike(lmdispl, lmpars, 'Piezo2CONT', 2)
+    lmdispl.add('static_displ', value=.33, min=0, max=.6, vary=True)
+    plot_static_displ_to_mod_spike(lmdispl, fitApproach.lmpars_fit,
+                                   'Piezo2CONT', 2)
 #    fit_static_displ(lmdispl, lmpars, 'Piezo2CONT', 0)
-    """

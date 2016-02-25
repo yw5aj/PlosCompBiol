@@ -21,7 +21,8 @@ MC_GROUPS = np.array([8, 5, 3, 1])
 #    threshold (mV)
 #    membrane capacitance (cm, in pF)
 #    membrane resistance (rm, in Gohm)
-LIF_PARAMS = np.array([30, 30, 1.667])
+# LIF_PARAMS = np.array([30, 30, 1.667])
+LIF_PARAMS = np.array([30., 30., 5.])
 
 # %% Recording constants
 FS = 16  # kHz
