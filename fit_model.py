@@ -305,16 +305,16 @@ lmpars_init_dict['t3f123'] = lmpars
 if __name__ == '__main__':
     run_fitting = True
     # %%
-    if run_fitting:
-        fitApproach_dict = {}
-        for approach, lmpars_init in lmpars_init_dict.items():
-            fitApproach = FitApproach(lmpars_init, approach)
+    fitApproach_dict = {}
+    for approach, lmpars_init in lmpars_init_dict.items():
+        fitApproach = FitApproach(lmpars_init, approach)
+        if run_fitting:
             fitApproach.fit_ref()
-            fitApproach_dict[approach] = fitApproach
+        fitApproach_dict[approach] = fitApproach
 
     # %% Playing with Approach t3f123
 #    fitApproach = fitApproach_dict['t3f123']
-    with open('data/fit/fit_result_approach_t3f123.pkl', 'rb') as f:
+    with open('data/fit/fit_result_t3f123.pkl', 'rb') as f:
         result = pickle.load(f)
     fitApproach.ref_result = result
     fitApproach.lmpars_fit = result.params
