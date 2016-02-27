@@ -215,6 +215,8 @@ def plot_single_fit(lmpars_fit, groups, time, stress,
         rec_fr = kwargs['rec_fr_inst']
     if fig is None and axs is None:
         fig, axs = plt.subplots()
+        axs0 = axs
+        axs1 = axs
     elif isinstance(axs, np.ndarray):
         axs0 = axs[0]
         axs1 = axs[1]
@@ -268,7 +270,7 @@ def export_displ_fit(result_static_displ, lmpars, stim, pname,
     plt.close(fig)
 
 
-def plot_static_displ_to_mod_spike(lmdispl, lmpars, stim, plot_kws=None,
+def plot_static_displ_to_mod_spike(lmdispl, lmpars, stim, plot_kws={},
                                    roll=True, animal=None, rec_dict=None,
                                    fig=None, axs=None):
     data_dicts = get_data_dicts(stim, lmdispl['static_displ'].value, animal,
@@ -395,13 +397,13 @@ if __name__ == '__main__':
     pass
     # %%
     fitApproach_dict = {}
-    approach = 't3f123'
 #    for approach, lmpars_init in lmpars_init_dict.items():
-    for approach, lmpars_init in {approach: lmpars_init_dict[approach]}.items():
-        lmpars_init = lmpars_init_dict[approach]
-        fitApproach = FitApproach(lmpars_init, approach)
-        fitApproach_dict[approach] = fitApproach
-        fig, axs = fitApproach.plot_all_displ(REF_ANIMAL)
-        fig.savefig('./data/fit/%s/Piezo2CONT.png' % approach)
+    for approach, lmpars_init in lmpars_init_dict.items():
+        if approach in ['t3f123', 't2f12']:
+            lmpars_init = lmpars_init_dict[approach]
+            fitApproach = FitApproach(lmpars_init, approach)
+            fitApproach_dict[approach] = fitApproach
+            fig, axs = fitApproach.plot_all_displ(REF_ANIMAL)
+            fig.savefig('./data/fit/%s/Piezo2CONT.png' % approach)
     # %% Playing with Approach t3f123
 
