@@ -27,6 +27,7 @@ LIF_PARAMS = np.array([30., 30., 5.])
 # %% Recording constants
 FS = 16  # kHz
 ANIMAL_LIST = ['Piezo2CONT', 'Piezo2CKO', 'Atoh1CKO']
+REF_ANIMAL = 'Piezo2CONT'
 MAT_FNAME_DICT = {
     'Piezo2CONT': '2013-12-07-01Piezo2CONT_calibrated.mat',
     'Piezo2CKO': '2013-12-13-02Piezo2CKO_calibrated.mat',

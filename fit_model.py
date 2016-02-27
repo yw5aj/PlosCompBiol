@@ -16,8 +16,57 @@ import re
 from stress_to_spike import (stress_to_fr_inst, spike_time_to_fr_roll,
                              spike_time_to_fr_inst)
 from model_constants import (MC_GROUPS, FS, ANIMAL_LIST, STIM_NUM, REF_DISPL,
-                             REF_STIM, WINDOW)
+                             REF_STIM, REF_ANIMAL, WINDOW)
 from gen_function import get_interp_stress
+
+
+# Define parameters for fitting
+# E.g., t3f1v23 means: 3 taus, fix tau1, vary tau2, tau3
+lmpars_init_dict = {}
+# Approach t2f12: use Adrienne's data
+lmpars = Parameters()
+lmpars.add('tau1', value=8, vary=False)
+lmpars.add('tau2', value=200, vary=False)
+lmpars.add('tau3', value=np.inf, vary=False)
+lmpars.add('k1', value=1, vary=True)
+lmpars.add('k2', value=.3, vary=True)
+lmpars.add('k3', value=.04, vary=True)
+lmpars_init_dict['t2f12'] = lmpars
+
+# Approach t2v12: let tau1 and tau2 float
+lmpars = Parameters()
+lmpars.add('tau1', value=8, vary=True, min=0, max=5000)
+lmpars.add('tau2', value=200, vary=True, min=0, max=5000)
+lmpars.add('tau3', value=np.inf, vary=False)
+lmpars.add('k1', value=1, vary=True)
+lmpars.add('k2', value=.3, vary=True)
+lmpars.add('k3', value=.04, vary=True)
+lmpars_init_dict['t2v12'] = lmpars
+
+# Approach t3f1v23: fix tau1 and float tau2, 3
+# Define lmpar
+lmpars = Parameters()
+lmpars.add('tau1', value=8, vary=False, min=0, max=5000)
+lmpars.add('tau2', value=200, vary=True, min=0, max=5000)
+lmpars.add('tau3', value=1000, vary=True, min=0, max=5000)
+lmpars.add('tau4', value=np.inf, vary=False)
+lmpars.add('k1', value=1., vary=True)
+lmpars.add('k2', value=.3, vary=True)
+lmpars.add('k3', value=.04, vary=True)
+lmpars.add('k4', value=.04, vary=True)
+lmpars_init_dict['t3f1v23'] = lmpars
+
+# Approach t3f123: add ultra-slow adapting constant and fix tau1, 2, 3
+lmpars = Parameters()
+lmpars.add('tau1', value=8, vary=False)
+lmpars.add('tau2', value=200, vary=False)
+lmpars.add('tau3', value=1832, vary=False)
+lmpars.add('tau4', value=np.inf, vary=False)
+lmpars.add('k1', value=1., vary=True)
+lmpars.add('k2', value=.3, vary=True)
+lmpars.add('k3', value=.04, vary=True)
+lmpars.add('k4', value=.04, vary=True)
+lmpars_init_dict['t3f123'] = lmpars
 
 
 def get_log_sample_after_peak(spike_time, fr_roll, n_sample):
@@ -87,7 +136,7 @@ def load_rec(animal):
     return rec_dict
 
 
-def adjust_stress_ramp_time(time, stress, max_time_spike, stretch_coeff=1.25):
+def adjust_stress_ramp_time(time, stress, max_time_spike, stretch_coeff):
     """
     Stretch the ramp phase of the stress such that the ramp time matches the
     `max_time_target`. The hold phase of the stress is unchanged.
@@ -120,7 +169,7 @@ def adjust_stress_ramp_time(time, stress, max_time_spike, stretch_coeff=1.25):
     return stress_new
 
 
-def get_data_dicts(animal, stim, static_displ, rec_dict=None):
+def get_data_dicts(stim, static_displ, animal=None, rec_dict=None):
     if rec_dict is None:
         rec_dict = load_rec(animal)
     # Read recording data
@@ -134,7 +183,8 @@ def get_data_dicts(animal, stim, static_displ, rec_dict=None):
     # Read model data
     time, stress = get_interp_stress(static_displ)
     max_time = rec_dict['max_time_list'][stim]
-    stress = adjust_stress_ramp_time(time, stress, max_time)
+    stretch_coeff = (5 + stim) / 4.
+    stress = adjust_stress_ramp_time(time, stress, max_time, stretch_coeff)
     mod_data_dict = {
         'groups': MC_GROUPS,
         'time': time,
@@ -155,18 +205,28 @@ def fit_single_rec(lmpars, fit_data_dict):
 
 
 def plot_single_fit(lmpars_fit, groups, time, stress,
-                    rec_spike_time, roll=True, **kwargs):
+                    rec_spike_time, plot_kws=None, roll=True,
+                    fig=None, axs=None, **kwargs):
     mod_spike_time, mod_fr_inst = get_mod_spike(lmpars_fit, groups,
                                                 time, stress)
     if roll:
         rec_fr = kwargs['rec_fr_roll']
     else:
         rec_fr = kwargs['rec_fr_inst']
-    fig, axs = plt.subplots()
-    axs.plot(mod_spike_time, mod_fr_inst * 1e3, '-r', label='Experiment')
-    axs.plot(rec_spike_time, rec_fr * 1e3, '.k', label='Model')
-    axs.set_xlabel('Time (msec)')
-    axs.set_ylabel('Instantaneous firing (Hz)')
+    if fig is None and axs is None:
+        fig, axs = plt.subplots()
+    elif isinstance(axs, np.ndarray):
+        axs0 = axs[0]
+        axs1 = axs[1]
+    else:
+        axs0 = axs
+        axs1 = axs
+    axs0.plot(mod_spike_time, mod_fr_inst * 1e3, '-', **plot_kws)
+    axs1.plot(rec_spike_time, rec_fr * 1e3, '.', **plot_kws)
+    axs0.set_xlabel('Time (msec)')
+    axs1.set_xlabel('Time (msec)')
+    axs1.set_ylabel('Instantaneous firing (Hz)')
+    axs0.set_ylabel('Instantaneous firing (Hz)')
     fig.tight_layout()
     return fig, axs
 
@@ -177,13 +237,14 @@ def get_time_stamp():
     return time_stamp
 
 
-def export_fit_result(result, fit_data_dict, label_str=None):
+def export_ref_fit(result, fit_data_dict, label_str=None,
+                   subfolder=''):
     if label_str is None:
         label_str = get_time_stamp()
-    fname_report = 'fit_report_%s.txt' % label_str
-    fname_pickle = 'fit_result_%s.pkl' % label_str
-    fname_plot = 'fit_plot_%s.png' % label_str
-    pname = os.path.join('data', 'fit')
+    fname_report = 'ref_fit_%s.txt' % label_str
+    fname_pickle = 'ref_fit_%s.pkl' % label_str
+    fname_plot = 'ref_fit_%s.png' % label_str
+    pname = os.path.join('data', 'fit', subfolder)
     with open(os.path.join(pname, fname_report), 'w') as f:
         f.write(fit_report(result))
     with open(os.path.join(pname, fname_pickle), 'wb') as f:
@@ -194,34 +255,49 @@ def export_fit_result(result, fit_data_dict, label_str=None):
     plt.close(fig)
 
 
-def plot_static_displ_to_mod_spike(lmdispl, lmpars, animal, stim):
-    data_dicts = get_data_dicts(animal, stim, lmdispl['static_displ'].value)
-    return plot_single_fit(lmpars, **data_dicts['fit_data_dict'])
+def export_displ_fit(result_static_displ, lmpars, stim, pname,
+                     animal=None, rec_dict=None):
+    with open(pname + '.txt', 'w') as f:
+        f.write(fit_report(result_static_displ))
+    with open(pname + '.pkl', 'wb') as f:
+        pickle.dump(result_static_displ, f)
+    fig, axs = plot_static_displ_to_mod_spike(
+        result_static_displ.params, lmpars, stim,
+        animal=animal, rec_dict=rec_dict)
+    fig.savefig(pname + '.png')
+    plt.close(fig)
 
 
-def static_displ_to_mod_spike(lmdispl, lmpars, animal, stim):
-    """
-    Given the model fitting parameters `lmpars`, we can find a stress trace
-    that can fit to a certain fiber. This fiber is from `stim` in `animal`,
-    and we fit by adjusting the `static_displ` to interpolate the stress.
-    """
-    data_dicts = get_data_dicts(animal, stim, lmdispl['static_displ'].value)
-    return get_mod_spike(lmpars, **data_dicts['mod_data_dict'])
+def plot_static_displ_to_mod_spike(lmdispl, lmpars, stim, plot_kws=None,
+                                   roll=True, animal=None, rec_dict=None,
+                                   fig=None, axs=None):
+    data_dicts = get_data_dicts(stim, lmdispl['static_displ'].value, animal,
+                                rec_dict)
+    fig, axs = plot_single_fit(
+        lmpars, roll=roll, plot_kws=plot_kws, fig=fig, axs=axs,
+        **data_dicts['fit_data_dict'])
+    return fig, axs
 
 
-def static_displ_to_residual(lmdispl, lmpars, fit_data_dict):
-    return get_single_residual(lmpars, **fit_data_dict)
+def static_displ_to_residual(lmdispl, lmpars, stim,
+                             animal=None, rec_dict=None):
+    data_dicts = get_data_dicts(stim, lmdispl['static_displ'].value,
+                                animal, rec_dict)
+    return get_single_residual(lmpars, **data_dicts['fit_data_dict'])
 
 
-def fit_static_displ(lmdispl, lmpars, animal, stim):
-    data_dicts = get_data_dicts(animal, stim, lmdispl['static_displ'].value)
+def fit_static_displ(lmdispl, lmpars, stim, animal=None, rec_dict=None):
     result = minimize(static_displ_to_residual,
-                      lmdispl, args=(lmpars, data_dicts['fit_data_dict']),
+                      lmdispl, args=(lmpars, stim, animal, rec_dict),
                       epsfcn=1e-4)
     return result
 
 
 class FitApproach():
+    """
+    If the parameters are stored in `data/fit`, then will load from file;
+    Otherwise, fitting will be performed.
+    """
 
     def __init__(self, lmpars_init, label=None):
         self.lmpars_init = lmpars_init
@@ -231,95 +307,101 @@ class FitApproach():
             self.label = label
         # Load data
         self.load_rec_dicts()
+        self.get_ref_fit()
+        self.get_displ_fit()
+
+    def get_ref_fit(self):
+        fname = 'data/fit/ref_fit_%s.pkl' % self.label
+        if os.path.exists(fname):
+            with open(fname, 'rb') as f:
+                self.ref_result = pickle.load(f)
+                self.lmpars_fit = self.ref_result.params
+        else:
+            self.fit_ref()
+
+    def get_displ_fit(self):
+        # Create property if not there
+        self.lmdispl_fit = {}
+#        for animal in ANIMAL_LIST:
+        for animal in ['Piezo2CONT']:
+            self.lmdispl_fit[animal] = np.empty(STIM_NUM, dtype='object')
+            for stim in range(STIM_NUM):
+                fname = os.path.join('data', 'fit', self.label,
+                                     '%s_%d.pkl' % (animal, stim))
+                if os.path.exists(fname):
+                    with open(fname, 'rb') as f:
+                        lmdispl_fit = pickle.load(f).params
+                        self.lmdispl_fit[animal][stim] = lmdispl_fit
+                else:
+                    self.fit_static_displ(animal, stim)
 
     def load_rec_dicts(self):
         self.rec_dicts = {animal: load_rec(animal) for animal in ANIMAL_LIST}
 
     def get_data_dicts(self, animal, stim, static_displ):
-        data_dicts = get_data_dicts(animal, stim, static_displ,
-                                    self.rec_dicts[animal])
+        data_dicts = get_data_dicts(stim, static_displ,
+                                    rec_dict=self.rec_dicts[animal])
         return data_dicts
 
-    def fit_ref(self, export=True, plot=False):
-        data_dicts = self.get_data_dicts('Piezo2CONT', REF_STIM, REF_DISPL)
+    def fit_ref(self, export=True):
+        data_dicts = self.get_data_dicts(REF_ANIMAL, REF_STIM, REF_DISPL)
         self.ref_result = fit_single_rec(self.lmpars_init,
                                          data_dicts['fit_data_dict'])
         self.lmpars_fit = self.ref_result.params
         if export:
-            export_fit_result(self.ref_result, data_dicts['fit_data_dict'],
-                              label_str=self.label)
-        if plot:
-            fig, axs = plot_single_fit(self.ref_result.params,
-                                       **data_dicts['fit_data_dict'])
-            return fig, axs
+            export_ref_fit(self.ref_result, data_dicts['fit_data_dict'],
+                           label_str=self.label)
 
+    def fit_static_displ(self, animal, stim, export=True):
+        lmdispl_init = Parameters()
+        if animal == REF_ANIMAL and stim == REF_STIM:
+            lmdispl_init.add('static_displ', value=REF_DISPL)
+            lmdispl_fit = lmdispl_init
+        else:
+            lmdispl_init.add('static_displ', value=.5, min=0, max=.6,
+                             vary=True)
+            result_static_displ = fit_static_displ(
+                lmdispl_init, self.lmpars_fit, stim,
+                rec_dict=self.rec_dicts[animal])
+            lmdispl_fit = result_static_displ.params
+            if export:
+                sub_folder = 'data/fit/%s' % self.label
+                pname = os.path.join(sub_folder, '%s_%d' % (animal, stim))
+                if not os.path.exists(sub_folder):
+                    os.mkdir(sub_folder)
+                export_displ_fit(result_static_displ, self.lmpars_fit, stim,
+                                 pname, rec_dict=self.rec_dicts[animal])
+        self.lmdispl_fit[animal][stim] = lmdispl_fit
 
-# Define parameters for fitting
-# E.g., t3f1v23 means: 3 taus, fix tau1, vary tau2, tau3
-lmpars_init_dict = {}
-# Approach t2f12: use Adrienne's data
-lmpars = Parameters()
-lmpars.add('tau1', value=8, vary=False)
-lmpars.add('tau2', value=200, vary=False)
-lmpars.add('tau3', value=np.inf, vary=False)
-lmpars.add('k1', value=1, vary=True)
-lmpars.add('k2', value=.3, vary=True)
-lmpars.add('k3', value=.04, vary=True)
-lmpars_init_dict['t2f12'] = lmpars
+    def plot_all_displ(self, animal):
+        fig, axs = plt.subplots(2, 1, figsize=(3.5, 6))
+        for stim in range(STIM_NUM):
+#            alpha = 1 - stim * .4
+            alpha = 1
+            label = str(stim)
+            color = ['k', 'r', 'g'][stim]
+            plot_kws = {'alpha': alpha, 'color': color, 'label': label}
+            lmdispl = self.lmdispl_fit[animal][stim]
+            fig, axs = plot_static_displ_to_mod_spike(
+                lmdispl, self.lmpars_fit, stim,
+                plot_kws=plot_kws, rec_dict=self.rec_dicts[animal],
+                fig=fig, axs=axs, roll=False)
+        for axes in axs:
+            axes.set_ylim(top=180)
+        return fig, axs
 
-# Approach t2v12: let tau1 and tau2 float
-lmpars = Parameters()
-lmpars.add('tau1', value=8, vary=True, min=0, max=5000)
-lmpars.add('tau2', value=200, vary=True, min=0, max=5000)
-lmpars.add('tau3', value=np.inf, vary=False)
-lmpars.add('k1', value=1, vary=True)
-lmpars.add('k2', value=.3, vary=True)
-lmpars.add('k3', value=.04, vary=True)
-lmpars_init_dict['t2v12'] = lmpars
-
-# Approach t3f1v23: fix tau1 and float tau2, 3
-# Define lmpar
-lmpars = Parameters()
-lmpars.add('tau1', value=8, vary=False, min=0, max=5000)
-lmpars.add('tau2', value=200, vary=True, min=0, max=5000)
-lmpars.add('tau3', value=1000, vary=True, min=0, max=5000)
-lmpars.add('tau4', value=np.inf, vary=False)
-lmpars.add('k1', value=1., vary=True)
-lmpars.add('k2', value=.3, vary=True)
-lmpars.add('k3', value=.04, vary=True)
-lmpars.add('k4', value=.04, vary=True)
-lmpars_init_dict['t3f1v23'] = lmpars
-
-# Approach t3f123: add ultra-slow adapting constant and fix tau1, 2, 3
-lmpars = Parameters()
-lmpars.add('tau1', value=8, vary=False)
-lmpars.add('tau2', value=200, vary=False)
-lmpars.add('tau3', value=1832, vary=False)
-lmpars.add('tau4', value=np.inf, vary=False)
-lmpars.add('k1', value=1., vary=True)
-lmpars.add('k2', value=.3, vary=True)
-lmpars.add('k3', value=.04, vary=True)
-lmpars.add('k4', value=.04, vary=True)
-lmpars_init_dict['t3f123'] = lmpars
 
 if __name__ == '__main__':
-    run_fitting = True
+    pass
     # %%
     fitApproach_dict = {}
-    for approach, lmpars_init in lmpars_init_dict.items():
+    approach = 't3f123'
+#    for approach, lmpars_init in lmpars_init_dict.items():
+    for approach, lmpars_init in {approach: lmpars_init_dict[approach]}.items():
+        lmpars_init = lmpars_init_dict[approach]
         fitApproach = FitApproach(lmpars_init, approach)
-        if run_fitting:
-            fitApproach.fit_ref()
         fitApproach_dict[approach] = fitApproach
-
+        fig, axs = fitApproach.plot_all_displ(REF_ANIMAL)
+        fig.savefig('./data/fit/%s/Piezo2CONT.png' % approach)
     # %% Playing with Approach t3f123
-#    fitApproach = fitApproach_dict['t3f123']
-    with open('data/fit/fit_result_t3f123.pkl', 'rb') as f:
-        result = pickle.load(f)
-    fitApproach.ref_result = result
-    fitApproach.lmpars_fit = result.params
-    lmdispl = Parameters()
-    lmdispl.add('static_displ', value=.33, min=0, max=.6, vary=True)
-    plot_static_displ_to_mod_spike(lmdispl, fitApproach.lmpars_fit,
-                                   'Piezo2CONT', 2)
-#    fit_static_displ(lmdispl, lmpars, 'Piezo2CONT', 0)
+
