@@ -116,8 +116,13 @@ def lmpars_to_params(lmpars):
 
 
 def load_rec(animal):
-    fname = os.path.join('data', 'rec', '%s_spike.csv' % animal)
-    spike_arr = np.genfromtxt(fname, delimiter=',')
+    def get_fname(animal, datatype):
+        return os.path.join('data', 'rec', '%s_%s.csv' % (animal, datatype))
+    fname_dict = {datatype: get_fname(animal, datatype)
+                  for datatype in ['spike', 'displ']}
+    displ_arr = np.genfromtxt(fname_dict['displ'], delimiter=',')
+    static_displ_list = np.round(displ_arr[-1], 2).tolist()
+    spike_arr = np.genfromtxt(fname_dict['spike'], delimiter=',')
     spike_time_list = [spike.nonzero()[0] / FS for spike in spike_arr.T]
     fr_inst_list = [spike_time_to_fr_inst(spike_time)
                     for spike_time in spike_time_list]
@@ -128,6 +133,7 @@ def load_rec(animal):
         max_time_list.append(spike_time[fr_roll.argmax()])
         max_fr_roll_list.append(fr_roll.max())
     rec_dict = {
+        'static_displ_list': static_displ_list,
         'spike_time_list': spike_time_list,
         'fr_inst_list': fr_inst_list,
         'fr_roll_list': fr_roll_list,
