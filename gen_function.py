@@ -51,17 +51,20 @@ def get_interp_stress(static_displ):
         Stress array.
     """
     time, static_displ_arr, stress_table = get_stress_table()
-    stress = np.empty_like(time)
-    # Use numpy for performance reasons
-    if static_displ <= static_displ_arr.max():
-        for i in range(stress.size):
-            stress[i] = np.interp(static_displ, static_displ_arr,
-                                  stress_table[i])
+    if static_displ <= static_displ_arr[-1]:
+        upper_index = (static_displ <= static_displ_arr).nonzero()[0][0]
+        upper_displ = static_displ_arr[upper_index]
+        lower_index = upper_index - 1
+        lower_displ = static_displ_arr[lower_index]
+        lower_ratio = (static_displ - lower_displ) / (upper_displ -
+                                                      lower_displ)
+        upper_ratio = 1 - lower_ratio
+        stress = stress_table.T[lower_index] * lower_ratio +\
+            stress_table.T[upper_index] * upper_ratio
     else:
-        for i in range(stress.size):
-            interp_func = interp1d(static_displ_arr, stress_table[i],
-                                   kind='linear', fill_value='extrapolate')
-            stress[i] = interp_func(static_displ)
+        stress = stress_table.T[-1] + (static_displ - static_displ_arr[-1]) / (
+            static_displ_arr[-1] - static_displ_arr[-2]) * (
+            stress_table.T[-1] - stress_table.T[-2])
     return time, stress
 
 

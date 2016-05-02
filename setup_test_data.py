@@ -3,11 +3,10 @@ import numpy as np
 import shutil
 from lmfit import Parameters
 
-from stress_to_spike import stress_to_group_current
-from gen_function import stress_to_current
+from stress_to_spike import stress_to_group_current, stress_to_fr_inst
+from gen_function import stress_to_current, get_interp_stress
 import cy_lif_model as lif_model
 from model_constants import MC_GROUPS, REF_DISPL, REF_STIM
-from stress_to_spike import stress_to_fr_inst
 from fit_model import get_data_dicts, get_single_residual
 
 
@@ -21,6 +20,8 @@ params = {
 lmpars = Parameters()
 lmpars.add_many(('tau1', 8), ('tau2', 200), ('tau3', 1832), ('tau4', np.inf),
                 ('k1', 0.782), ('k2', 0.304), ('k3', 0.051), ('k4', 0.047))
+interp_static_displ = .35
+extrap_static_displ = .65
 
 
 def load_test_csv(vname_list):
@@ -58,11 +59,15 @@ def setup_gen_function(data):
 def setup_stress_to_spike(data):
     data['spike_time'], data['fr_inst'] = stress_to_fr_inst(
         data['fine_time'], data['fine_stress'], MC_GROUPS, **params)
+    data['interp_time'], data['interp_stress'] = get_interp_stress(
+        interp_static_displ)
+    data['extrap_time'], data['extrap_stress'] = get_interp_stress(
+        extrap_static_displ)
 
 
 def setup_fit_lif(data):
     # Input data
-    data_dicts = get_data_dicts('Piezo2CONT', REF_STIM, REF_DISPL)
+    data_dicts = get_data_dicts(REF_STIM, 'Piezo2CONT')
     for key, item in data_dicts.items():
         data.update(item)
     # Output data

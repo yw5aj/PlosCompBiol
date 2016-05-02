@@ -10,7 +10,7 @@ import pytest
 import os
 
 from setup_test_data import load_test_csv, lmpars
-from fit_model import get_single_residual, static_displ_to_residual
+from fit_model import get_single_residual
 
 
 @pytest.fixture(scope='module')
@@ -20,10 +20,6 @@ def load_data():
     data_dict = load_test_csv(vname_list)
     data_dict['lmpars'] = lmpars
     return data_dict
-
-
-def test_static_displ_to_residual(load_data):
-    assert True
 
 
 def test_get_single_residual(load_data):
