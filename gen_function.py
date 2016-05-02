@@ -36,7 +36,7 @@ def get_single_rough_fea(fe_id):
 
 def get_interp_stress(static_displ):
     """
-    Get interpolated stress from FE model.
+    Get interpolated stress from FE model. Will do linear extrapolation.
 
     Parameters
     ----------
@@ -52,8 +52,16 @@ def get_interp_stress(static_displ):
     """
     time, static_displ_arr, stress_table = get_stress_table()
     stress = np.empty_like(time)
-    for i in range(stress.size):
-        stress[i] = np.interp(static_displ, static_displ_arr, stress_table[i])
+    # Use numpy for performance reasons
+    if static_displ <= static_displ_arr.max():
+        for i in range(stress.size):
+            stress[i] = np.interp(static_displ, static_displ_arr,
+                                  stress_table[i])
+    else:
+        for i in range(stress.size):
+            interp_func = interp1d(static_displ_arr, stress_table[i],
+                                   kind='linear', fill_value='extrapolate')
+            stress[i] = interp_func(static_displ)
     return time, stress
 
 

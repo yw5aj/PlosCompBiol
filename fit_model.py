@@ -366,6 +366,18 @@ class FitApproach():
         fig.tight_layout()
         return fig, axs
 
+    def plot_piezo2cko(self):
+        lmpars_piezo2cko = copy.deepcopy(self.ref_mean_lmpars)
+        lmpars_piezo2cko['k1'].set(value=0)
+        lmpars_piezo2cko['k4'].set(value=0)
+        fig, axs = plt.subplots()
+        for stim in range(STIM_NUM):
+            color = COLOR_LIST[stim]
+            plot_single_fit(
+                lmpars_piezo2cko, fig=fig, axs=axs, roll=False,
+                plot_kws={'color': color},
+                **self.data_dicts_dicts['Piezo2CKO'][stim]['fit_data_dict'])
+
 
 if __name__ == '__main__':
     pass
@@ -373,14 +385,6 @@ if __name__ == '__main__':
     fitApproach_dict = {}
 #    for approach, lmpars_init in lmpars_init_dict.items():
     for approach, lmpars_init in lmpars_init_dict.items():
-        if approach in ['t3f123']:
-            lmpars_init = lmpars_init_dict[approach]
-            fitApproach = FitApproach(lmpars_init, approach)
-            fitApproach_dict[approach] = fitApproach
-    # %% Playing with Approach t3f123
-    fitApproach = fitApproach_dict['t3f123']
-    lmpars_fit = fitApproach.ref_mean_lmpars
-    # If we knock out the 2nd shortest time constants, will it match
-    # Piezo 2 KO?
-
-
+        lmpars_init = lmpars_init_dict[approach]
+        fitApproach = FitApproach(lmpars_init, approach)
+        fitApproach_dict[approach] = fitApproach
