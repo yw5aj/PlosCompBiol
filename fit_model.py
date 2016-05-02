@@ -7,16 +7,20 @@ Created on Tue Feb 16 10:25:32 2016
 
 import numpy as np
 import os
+from multiprocessing import Pool
+from collections import defaultdict
 from lmfit import minimize, fit_report, Parameters
 import matplotlib.pyplot as plt
 import pickle
 import datetime
 import re
+import copy
 
 from stress_to_spike import (stress_to_fr_inst, spike_time_to_fr_roll,
                              spike_time_to_fr_inst)
-from model_constants import (MC_GROUPS, FS, ANIMAL_LIST, STIM_NUM, REF_DISPL,
-                             REF_STIM, REF_ANIMAL, WINDOW)
+from model_constants import (MC_GROUPS, FS, ANIMAL_LIST, STIM_NUM,
+                             REF_ANIMAL, REF_STIM_LIST, WINDOW, REF_DISPL,
+                             COLOR_LIST)
 from gen_function import get_interp_stress
 
 
@@ -175,13 +179,14 @@ def adjust_stress_ramp_time(time, stress, max_time_spike, stretch_coeff):
     return stress_new
 
 
-def get_data_dicts(stim, static_displ, animal=None, rec_dict=None):
+def get_data_dicts(stim, animal=None, rec_dict=None):
     if rec_dict is None:
         rec_dict = load_rec(animal)
     # Read recording data
     rec_fr_inst = rec_dict['fr_inst_list'][stim]
     rec_spike_time = rec_dict['spike_time_list'][stim]
     rec_fr_roll = rec_dict['fr_roll_list'][stim]
+    static_displ = rec_dict['static_displ_list'][stim]
     rec_data_dict = {
         'rec_spike_time': rec_spike_time,
         'rec_fr_inst': rec_fr_inst,
@@ -189,7 +194,7 @@ def get_data_dicts(stim, static_displ, animal=None, rec_dict=None):
     # Read model data
     time, stress = get_interp_stress(static_displ)
     max_time = rec_dict['max_time_list'][stim]
-    stretch_coeff = (5 + stim) / 4.
+    stretch_coeff = 1 + 0.25 * static_displ / REF_DISPL
     stress = adjust_stress_ramp_time(time, stress, max_time, stretch_coeff)
     mod_data_dict = {
         'groups': MC_GROUPS,
@@ -210,8 +215,12 @@ def fit_single_rec(lmpars, fit_data_dict):
     return result
 
 
+def fit_single_rec_mp(args):
+    return fit_single_rec(*args)
+
+
 def plot_single_fit(lmpars_fit, groups, time, stress,
-                    rec_spike_time, plot_kws=None, roll=True,
+                    rec_spike_time, plot_kws={}, roll=True,
                     fig=None, axs=None, **kwargs):
     mod_spike_time, mod_fr_inst = get_mod_spike(lmpars_fit, groups,
                                                 time, stress)
@@ -245,60 +254,18 @@ def get_time_stamp():
     return time_stamp
 
 
-def export_ref_fit(result, fit_data_dict, label_str=None,
-                   subfolder=''):
-    if label_str is None:
-        label_str = get_time_stamp()
-    fname_report = 'ref_fit_%s.txt' % label_str
-    fname_pickle = 'ref_fit_%s.pkl' % label_str
-    fname_plot = 'ref_fit_%s.png' % label_str
-    pname = os.path.join('data', 'fit', subfolder)
-    with open(os.path.join(pname, fname_report), 'w') as f:
-        f.write(fit_report(result))
-    with open(os.path.join(pname, fname_pickle), 'wb') as f:
-        pickle.dump(result, f)
-    # Plot
-    fig, axs = plot_single_fit(result.params, **fit_data_dict)
-    fig.savefig(os.path.join(pname, fname_plot), dpi=300)
-    plt.close(fig)
-
-
-def export_displ_fit(result_static_displ, lmpars, stim, pname,
-                     animal=None, rec_dict=None):
-    with open(pname + '.txt', 'w') as f:
-        f.write(fit_report(result_static_displ))
-    with open(pname + '.pkl', 'wb') as f:
-        pickle.dump(result_static_displ, f)
-    fig, axs = plot_static_displ_to_mod_spike(
-        result_static_displ.params, lmpars, stim,
-        animal=animal, rec_dict=rec_dict)
-    fig.savefig(pname + '.png')
-    plt.close(fig)
-
-
-def plot_static_displ_to_mod_spike(lmdispl, lmpars, stim, plot_kws={},
-                                   roll=True, animal=None, rec_dict=None,
-                                   fig=None, axs=None):
-    data_dicts = get_data_dicts(stim, lmdispl['static_displ'].value, animal,
-                                rec_dict)
-    fig, axs = plot_single_fit(
-        lmpars, roll=roll, plot_kws=plot_kws, fig=fig, axs=axs,
-        **data_dicts['fit_data_dict'])
-    return fig, axs
-
-
-def static_displ_to_residual(lmdispl, lmpars, stim,
-                             animal=None, rec_dict=None):
-    data_dicts = get_data_dicts(stim, lmdispl['static_displ'].value,
-                                animal, rec_dict)
-    return get_single_residual(lmpars, **data_dicts['fit_data_dict'])
-
-
-def fit_static_displ(lmdispl, lmpars, stim, animal=None, rec_dict=None):
-    result = minimize(static_displ_to_residual,
-                      lmdispl, args=(lmpars, stim, animal, rec_dict),
-                      epsfcn=1e-4)
-    return result
+def get_mean_lmpar(lmpar_list):
+    if isinstance(lmpar_list, Parameters):
+        return lmpar_list
+    lmpar_dict_list = [lmpar.valuesdict() for lmpar in lmpar_list]
+    all_param_dict = defaultdict(list)
+    for lmpar_dict in lmpar_dict_list:
+        for key, value in lmpar_dict.items():
+            all_param_dict[key].append(value)
+    mean_lmpar = copy.deepcopy(lmpar_list[0])
+    for key, value in all_param_dict.items():
+        mean_lmpar[key].set(value=np.mean(value))
+    return mean_lmpar
 
 
 class FitApproach():
@@ -315,87 +282,88 @@ class FitApproach():
             self.label = label
         # Load data
         self.load_rec_dicts()
+        self.load_data_dicts_dicts()
         self.get_ref_fit()
-        self.get_displ_fit()
 
     def get_ref_fit(self):
-        fname = 'data/fit/ref_fit_%s.pkl' % self.label
-        if os.path.exists(fname):
-            with open(fname, 'rb') as f:
-                self.ref_result = pickle.load(f)
-                self.lmpars_fit = self.ref_result.params
+        pname = os.path.join('data', 'fit', self.label)
+        if os.path.exists(pname):
+            with open(os.path.join(pname, 'ref_mean_lmpars.pkl'), 'rb') as f:
+                self.ref_mean_lmpars = pickle.load(f)
+            self.ref_result_list = []
+            for fname in os.listdir(pname):
+                if fname.startswith('ref_fit') and fname.endswith('.pkl'):
+                    with open(os.path.join(pname, fname), 'rb') as f:
+                        self.ref_result_list.append(pickle.load(f))
         else:
             self.fit_ref()
-
-    def get_displ_fit(self):
-        # Create property if not there
-        self.lmdispl_fit = {}
-#        for animal in ANIMAL_LIST:
-        for animal in ['Piezo2CONT']:
-            self.lmdispl_fit[animal] = np.empty(STIM_NUM, dtype='object')
-            for stim in range(STIM_NUM):
-                fname = os.path.join('data', 'fit', self.label,
-                                     '%s_%d.pkl' % (animal, stim))
-                if os.path.exists(fname):
-                    with open(fname, 'rb') as f:
-                        lmdispl_fit = pickle.load(f).params
-                        self.lmdispl_fit[animal][stim] = lmdispl_fit
-                else:
-                    self.fit_static_displ(animal, stim)
 
     def load_rec_dicts(self):
         self.rec_dicts = {animal: load_rec(animal) for animal in ANIMAL_LIST}
 
-    def get_data_dicts(self, animal, stim, static_displ):
-        data_dicts = get_data_dicts(stim, static_displ,
-                                    rec_dict=self.rec_dicts[animal])
+    def get_data_dicts(self, animal, stim):
+        data_dicts = get_data_dicts(stim, rec_dict=self.rec_dicts[animal])
         return data_dicts
 
+    def load_data_dicts_dicts(self):
+        self.data_dicts_dicts = {}
+        for animal in ANIMAL_LIST:
+            self.data_dicts_dicts[animal] = {}
+            for stim in range(STIM_NUM):
+                self.data_dicts_dicts[animal][stim] = self.get_data_dicts(
+                    animal, stim)
+
     def fit_ref(self, export=True):
-        data_dicts = self.get_data_dicts(REF_ANIMAL, REF_STIM, REF_DISPL)
-        self.ref_result = fit_single_rec(self.lmpars_init,
-                                         data_dicts['fit_data_dict'])
-        self.lmpars_fit = self.ref_result.params
+        data_dicts_dict = self.data_dicts_dicts[REF_ANIMAL]
+        # Prepare data for multiprocessing
+        fit_mp_list = []
+        for stim in REF_STIM_LIST:
+            fit_mp_list.append([self.lmpars_init,
+                                data_dicts_dict[stim]['fit_data_dict']])
+        with Pool(5) as p:
+            self.ref_result_list = p.map(fit_single_rec_mp, fit_mp_list)
+        lmpar_list = [result.params for result in self.ref_result_list]
+        self.ref_mean_lmpars = get_mean_lmpar(lmpar_list)
+        # Plot the fit for multiple displacements
         if export:
-            export_ref_fit(self.ref_result, data_dicts['fit_data_dict'],
-                           label_str=self.label)
+            self.export_ref_fit()
 
-    def fit_static_displ(self, animal, stim, export=True):
-        lmdispl_init = Parameters()
-        if animal == REF_ANIMAL and stim == REF_STIM:
-            lmdispl_init.add('static_displ', value=REF_DISPL)
-            lmdispl_fit = lmdispl_init
-        else:
-            lmdispl_init.add('static_displ', value=.5, min=0, max=.6,
-                             vary=True)
-            result_static_displ = fit_static_displ(
-                lmdispl_init, self.lmpars_fit, stim,
-                rec_dict=self.rec_dicts[animal])
-            lmdispl_fit = result_static_displ.params
-            if export:
-                sub_folder = 'data/fit/%s' % self.label
-                pname = os.path.join(sub_folder, '%s_%d' % (animal, stim))
-                if not os.path.exists(sub_folder):
-                    os.mkdir(sub_folder)
-                export_displ_fit(result_static_displ, self.lmpars_fit, stim,
-                                 pname, rec_dict=self.rec_dicts[animal])
-        self.lmdispl_fit[animal][stim] = lmdispl_fit
+    def export_ref_fit(self):
+        pname = os.path.join('data', 'fit', self.label)
+        os.mkdir(pname)
+        for stim, result in zip(REF_STIM_LIST, self.ref_result_list):
+            fname_report = 'ref_fit_%d.txt' % stim
+            fname_pickle = 'ref_fit_%d.pkl' % stim
+            with open(os.path.join(pname, fname_report), 'w') as f:
+                f.write(fit_report(result))
+            with open(os.path.join(pname, fname_pickle), 'wb') as f:
+                pickle.dump(result, f)
+        with open(os.path.join(pname, 'ref_mean_lmpars.pkl'), 'wb') as f:
+            pickle.dump(self.ref_mean_lmpars, f)
+        # Plot
+        fig, axs = self.plot_ref_fit(roll=True)
+        fig.savefig(os.path.join(pname, 'ref_fit_roll.png'), dpi=300)
+        plt.close(fig)
+        fig, axs = self.plot_ref_fit(roll=False)
+        fig.savefig(os.path.join(pname, 'ref_fit_inst.png'), dpi=300)
+        plt.close(fig)
 
-    def plot_all_displ(self, animal):
+    def plot_ref_fit(self, roll=True):
         fig, axs = plt.subplots(2, 1, figsize=(3.5, 6))
-        for stim in range(STIM_NUM):
-#            alpha = 1 - stim * .4
-            alpha = 1
-            label = str(stim)
-            color = ['k', 'r', 'g'][stim]
-            plot_kws = {'alpha': alpha, 'color': color, 'label': label}
-            lmdispl = self.lmdispl_fit[animal][stim]
-            fig, axs = plot_static_displ_to_mod_spike(
-                lmdispl, self.lmpars_fit, stim,
-                plot_kws=plot_kws, rec_dict=self.rec_dicts[animal],
-                fig=fig, axs=axs, roll=False)
-        for axes in axs:
-            axes.set_ylim(top=180)
+        for stim, ref_result in zip(REF_STIM_LIST, self.ref_result_list):
+            lmpars_fit = ref_result.params
+            color = COLOR_LIST[stim]
+            plot_single_fit(
+                lmpars_fit, fig=fig, axs=axs[0], roll=roll,
+                plot_kws={'color': color},
+                **self.data_dicts_dicts[REF_ANIMAL][stim]['fit_data_dict'])
+            plot_single_fit(
+                self.ref_mean_lmpars, fig=fig, axs=axs[1], roll=roll,
+                plot_kws={'color': color},
+                **self.data_dicts_dicts[REF_ANIMAL][stim]['fit_data_dict'])
+        axs[0].set_title('Individual fitting parameters')
+        axs[1].set_title('Using the average fitting parameter')
+        fig.tight_layout()
         return fig, axs
 
 
@@ -405,11 +373,14 @@ if __name__ == '__main__':
     fitApproach_dict = {}
 #    for approach, lmpars_init in lmpars_init_dict.items():
     for approach, lmpars_init in lmpars_init_dict.items():
-        if approach in ['t3f123', 't2f12']:
+        if approach in ['t3f123']:
             lmpars_init = lmpars_init_dict[approach]
             fitApproach = FitApproach(lmpars_init, approach)
             fitApproach_dict[approach] = fitApproach
-            fig, axs = fitApproach.plot_all_displ(REF_ANIMAL)
-            fig.savefig('./data/fit/%s/Piezo2CONT.png' % approach)
     # %% Playing with Approach t3f123
+    fitApproach = fitApproach_dict['t3f123']
+    lmpars_fit = fitApproach.ref_mean_lmpars
+    # If we knock out the 2nd shortest time constants, will it match
+    # Piezo 2 KO?
+
 

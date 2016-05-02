@@ -69,7 +69,7 @@ def spike_time_to_trace(spike_time):
 def spike_time_to_fr_roll(spike_time, window_size):
     spike_time = np.array(spike_time)
     isi_inst = np.r_[np.inf, np.diff(spike_time)]
-    isi_roll = pd.rolling_mean(isi_inst, window_size)
+    isi_roll = pd.Series(isi_inst).rolling(window=window_size).mean()
     isi_roll[np.isnan(isi_roll)] = np.inf
     fr_roll = 1 / isi_roll
     return fr_roll

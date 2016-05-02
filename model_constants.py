@@ -38,6 +38,7 @@ STIM_LIST_DICT = {
     'Atoh1CKO': [(101, 2), (101, 1), (101, 5)]}
 STIM_NUM = len(next(iter(STIM_LIST_DICT.values())))
 REF_STIM = 0
+REF_STIM_LIST = [0, 2]
 WINDOW = 5
 
 # %% FEM constants
@@ -45,3 +46,7 @@ fe_id_list = [int(fname[10:12])
               for fname in os.listdir('data/fem') if fname.endswith('csv')]
 FE_NUM = np.max(fe_id_list) + 1
 REF_DISPL = .6
+
+# %% For plotting
+COLOR_LIST = ['k', 'r', 'g', 'b', 'c', 'm', 'y', 'r', 'g', 'b']
+
