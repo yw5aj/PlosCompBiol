@@ -401,9 +401,11 @@ if __name__ == '__main__':
     fitApproach = fitApproach_dict['t3f123']
     k_list = [key for key in fitApproach.ref_mean_lmpars.keys()
               if key.startswith('k')]
+    k_combination_list = []
+    for i in range(1, len(k_list)):
+        k_combination_list.extend(list(combinations(k_list, i)))
     for animal in CKO_ANIMAL_LIST:
-        for k_out_tuple in (list(combinations(k_list, 1)) +
-                            list(combinations(k_list, 2))):
+        for k_out_tuple in k_combination_list:
             try:
                 fitApproach.plot_cko(animal, k_out_tuple)
             except ValueError:
