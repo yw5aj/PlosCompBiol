@@ -366,10 +366,10 @@ class FitApproach():
         fig.tight_layout()
         return fig, axs
 
-    def plot_piezo2cko(self):
+    def plot_piezo2cko(self, k_out_list):
         lmpars_piezo2cko = copy.deepcopy(self.ref_mean_lmpars)
-        lmpars_piezo2cko['k1'].set(value=0)
-        lmpars_piezo2cko['k4'].set(value=0)
+        for k_out in k_out_list:
+            lmpars_piezo2cko[k_out].set(value=0)
         fig, axs = plt.subplots()
         for stim in range(STIM_NUM):
             color = COLOR_LIST[stim]
@@ -377,14 +377,24 @@ class FitApproach():
                 lmpars_piezo2cko, fig=fig, axs=axs, roll=False,
                 plot_kws={'color': color},
                 **self.data_dicts_dicts['Piezo2CKO'][stim]['fit_data_dict'])
+        axs.set_title('Eliminating' + str(k_out_list))
+        fig.tight_layout()
+        label = str(k_out_list)replace('\'', '').replace('[', '').replace(
+            ']', '').replace(',', '').replace(' ', '')
+        fig.savefig('./data/output/%s.png' % label)
+
+    def plot_atoh1cko(self):
+        pass
 
 
 if __name__ == '__main__':
     pass
     # %%
     fitApproach_dict = {}
-#    for approach, lmpars_init in lmpars_init_dict.items():
     for approach, lmpars_init in lmpars_init_dict.items():
         lmpars_init = lmpars_init_dict[approach]
         fitApproach = FitApproach(lmpars_init, approach)
         fitApproach_dict[approach] = fitApproach
+    # Play with t3f123
+    fitApproach = fitApproach_dict['t3f123']
+    fitApproach.plot_piezo2cko()
