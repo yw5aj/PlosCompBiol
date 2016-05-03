@@ -33,9 +33,9 @@ lmpars = Parameters()
 lmpars.add('tau1', value=8, vary=False)
 lmpars.add('tau2', value=200, vary=False)
 lmpars.add('tau3', value=np.inf, vary=False)
-lmpars.add('k1', value=1, vary=True)
-lmpars.add('k2', value=.3, vary=True)
-lmpars.add('k3', value=.04, vary=True)
+lmpars.add('k1', value=1, vary=True, min=0)
+lmpars.add('k2', value=.3, vary=True, min=0)
+lmpars.add('k3', value=.04, vary=True, min=0)
 lmpars_init_dict['t2f12'] = lmpars
 
 # Approach t2v12: let tau1 and tau2 float
