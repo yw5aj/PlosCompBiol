@@ -9,6 +9,7 @@ import numpy as np
 import os
 from multiprocessing import Pool
 from collections import defaultdict
+from itertools import combinations
 from lmfit import minimize, fit_report, Parameters
 import matplotlib.pyplot as plt
 import pickle
@@ -20,7 +21,7 @@ from stress_to_spike import (stress_to_fr_inst, spike_time_to_fr_roll,
                              spike_time_to_fr_inst)
 from model_constants import (MC_GROUPS, FS, ANIMAL_LIST, STIM_NUM,
                              REF_ANIMAL, REF_STIM_LIST, WINDOW, REF_DISPL,
-                             COLOR_LIST)
+                             COLOR_LIST, CKO_ANIMAL_LIST)
 from gen_function import get_interp_stress
 
 
@@ -366,7 +367,9 @@ class FitApproach():
         fig.tight_layout()
         return fig, axs
 
-    def plot_piezo2cko(self, k_out_list):
+    def plot_cko(self, animal, k_out_list):
+        label = str(k_out_list).replace('\'', '').replace('(', '').replace(
+            ')', '').replace(',', '').replace(' ', '')
         lmpars_piezo2cko = copy.deepcopy(self.ref_mean_lmpars)
         for k_out in k_out_list:
             lmpars_piezo2cko[k_out].set(value=0)
@@ -376,12 +379,11 @@ class FitApproach():
             plot_single_fit(
                 lmpars_piezo2cko, fig=fig, axs=axs, roll=False,
                 plot_kws={'color': color},
-                **self.data_dicts_dicts['Piezo2CKO'][stim]['fit_data_dict'])
-        axs.set_title('Eliminating' + str(k_out_list))
+                **self.data_dicts_dicts[animal][stim]['fit_data_dict'])
+        axs.set_title('Eliminating %s for %s' % (label, animal))
         fig.tight_layout()
-        label = str(k_out_list)replace('\'', '').replace('[', '').replace(
-            ']', '').replace(',', '').replace(' ', '')
-        fig.savefig('./data/output/%s.png' % label)
+        fig.savefig('./data/output/%s_%s.png' % (animal, label))
+        plt.close(fig)
 
     def plot_atoh1cko(self):
         pass
@@ -395,6 +397,14 @@ if __name__ == '__main__':
         lmpars_init = lmpars_init_dict[approach]
         fitApproach = FitApproach(lmpars_init, approach)
         fitApproach_dict[approach] = fitApproach
-    # Play with t3f123
+    # %% Play with t3f123
     fitApproach = fitApproach_dict['t3f123']
-    fitApproach.plot_piezo2cko()
+    k_list = [key for key in fitApproach.ref_mean_lmpars.keys()
+              if key.startswith('k')]
+    for animal in CKO_ANIMAL_LIST:
+        for k_out_tuple in (list(combinations(k_list, 1)) +
+                            list(combinations(k_list, 2))):
+            try:
+                fitApproach.plot_cko(animal, k_out_tuple)
+            except ValueError:
+                pass
