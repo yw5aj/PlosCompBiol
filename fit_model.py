@@ -33,10 +33,20 @@ lmpars = Parameters()
 lmpars.add('tau1', value=8, vary=False)
 lmpars.add('tau2', value=200, vary=False)
 lmpars.add('tau3', value=np.inf, vary=False)
-lmpars.add('k1', value=1, vary=True, min=0)
+lmpars.add('k1', value=1., vary=True, min=0)
 lmpars.add('k2', value=.3, vary=True, min=0)
 lmpars.add('k3', value=.04, vary=True, min=0)
 lmpars_init_dict['t2f12'] = lmpars
+
+# Approach t2f12eqk23: use Adrienne's data, k3=k2
+lmpars = Parameters()
+lmpars.add('tau1', value=8, vary=False)
+lmpars.add('tau2', value=200, vary=False)
+lmpars.add('tau3', value=np.inf, vary=False)
+lmpars.add('k1', value=1., vary=True, min=0)
+lmpars.add('k2', value=.3, vary=True, min=0)
+lmpars.add('k3', expr='k2')
+lmpars_init_dict['t2f12eqk23'] = lmpars
 
 # Approach t2v12: let tau1 and tau2 float
 lmpars = Parameters()
@@ -72,6 +82,19 @@ lmpars.add('k2', value=.3, vary=True)
 lmpars.add('k3', value=.04, vary=True)
 lmpars.add('k4', value=.04, vary=True)
 lmpars_init_dict['t3f123'] = lmpars
+
+
+# Approach t3f123eqk24: above but k2=k4
+lmpars = Parameters()
+lmpars.add('tau1', value=8, vary=False)
+lmpars.add('tau2', value=200, vary=False)
+lmpars.add('tau3', value=1832, vary=False)
+lmpars.add('tau4', value=np.inf, vary=False)
+lmpars.add('k1', value=1., vary=True)
+lmpars.add('k2', value=.3, vary=True)
+lmpars.add('k3', value=.04, vary=True)
+lmpars.add('k4', expr='k2')
+lmpars_init_dict['t3f123eqk24'] = lmpars
 
 
 def get_log_sample_after_peak(spike_time, fr_roll, n_sample):
@@ -222,9 +245,8 @@ def fit_single_rec_mp(args):
 
 def plot_single_fit(lmpars_fit, groups, time, stress,
                     rec_spike_time, plot_kws={}, roll=True,
+                    plot_rec=True, plot_mod=True,
                     fig=None, axs=None, **kwargs):
-    mod_spike_time, mod_fr_inst = get_mod_spike(lmpars_fit, groups,
-                                                time, stress)
     if roll:
         rec_fr = kwargs['rec_fr_roll']
     else:
@@ -239,12 +261,18 @@ def plot_single_fit(lmpars_fit, groups, time, stress,
     else:
         axs0 = axs
         axs1 = axs
-    axs0.plot(mod_spike_time, mod_fr_inst * 1e3, '-', **plot_kws)
-    axs1.plot(rec_spike_time, rec_fr * 1e3, '.', **plot_kws)
-    axs0.set_xlabel('Time (msec)')
-    axs1.set_xlabel('Time (msec)')
-    axs1.set_ylabel('Instantaneous firing (Hz)')
-    axs0.set_ylabel('Instantaneous firing (Hz)')
+    if plot_mod:
+        mod_spike_time, mod_fr_inst = get_mod_spike(lmpars_fit, groups,
+                                                    time, stress)
+        axs0.plot(mod_spike_time, mod_fr_inst * 1e3, '-', **plot_kws)
+        axs0.set_xlim(0, 5000)
+        axs0.set_xlabel('Time (msec)')
+        axs0.set_ylabel('Instantaneous firing (Hz)')
+    if plot_rec:
+        axs1.plot(rec_spike_time, rec_fr * 1e3, '.', **plot_kws)
+        axs1.set_xlim(0, 5000)
+        axs1.set_xlabel('Time (msec)')
+        axs1.set_ylabel('Instantaneous firing (Hz)')
     fig.tight_layout()
     return fig, axs
 
@@ -370,14 +398,14 @@ class FitApproach():
     def plot_cko(self, animal, k_out_list):
         label = str(k_out_list).replace('\'', '').replace('(', '').replace(
             ')', '').replace(',', '').replace(' ', '')
-        lmpars_piezo2cko = copy.deepcopy(self.ref_mean_lmpars)
+        lmpars_cko = copy.deepcopy(self.ref_mean_lmpars)
         for k_out in k_out_list:
-            lmpars_piezo2cko[k_out].set(value=0)
+            lmpars_cko[k_out].set(value=0)
         fig, axs = plt.subplots()
         for stim in range(STIM_NUM):
             color = COLOR_LIST[stim]
             plot_single_fit(
-                lmpars_piezo2cko, fig=fig, axs=axs, roll=False,
+                lmpars_cko, fig=fig, axs=axs, roll=False,
                 plot_kws={'color': color},
                 **self.data_dicts_dicts[animal][stim]['fit_data_dict'])
         axs.set_title('Eliminating %s for %s' % (label, animal))
@@ -385,8 +413,18 @@ class FitApproach():
         fig.savefig('./data/output/%s_%s.png' % (animal, label))
         plt.close(fig)
 
-    def plot_atoh1cko(self):
-        pass
+    def plot_all_cko(self, animal_list=CKO_ANIMAL_LIST):
+        k_list = [key for key in self.ref_mean_lmpars.keys()
+                  if key.startswith('k')]
+        k_combination_list = []
+        for i in range(1, len(k_list)):
+            k_combination_list.extend(list(combinations(k_list, i)))
+        for animal in animal_list:
+            for k_out_tuple in k_combination_list:
+                try:
+                    self.plot_cko(animal, k_out_tuple)
+                except ValueError:
+                    pass
 
 
 if __name__ == '__main__':
@@ -397,16 +435,78 @@ if __name__ == '__main__':
         lmpars_init = lmpars_init_dict[approach]
         fitApproach = FitApproach(lmpars_init, approach)
         fitApproach_dict[approach] = fitApproach
-    # %% Play with t3f123
+    # %%
+
+    def plot_cko_customized(self, method, animal_rec=None, animal_mod=None):
+        lmpars_cko = copy.deepcopy(self.ref_mean_lmpars)
+        if method == 'tau1tau2tau3tau4':
+            pass
+        elif method == 'tau1tau4':
+            lmpars_cko['k2'].set(value=0)
+            lmpars_cko['k3'].set(value=0)
+        elif method == 'tau1tau3tau4':
+            lmpars_cko['k2'].set(value=0)
+        elif method == 'tau1tau21tau3':
+            lmpars_cko['k4'].set(value=0)
+            lmpars_cko['k2'].set(value=lmpars_cko['k2'].value -
+                                 lmpars_cko['k4'].value)
+        elif method == 'tau1':
+            lmpars_cko['k2'].set(value=0)
+            lmpars_cko['k3'].set(value=0)
+            lmpars_cko['k4'].set(value=0)
+        elif method == 'tau1tau3':
+            lmpars_cko['k2'].set(value=0)
+            lmpars_cko['k4'].set(value=0)
+        elif method == 'tau1tau2tau3':
+            lmpars_cko['k4'].set(value=0)
+        elif method == 'tau3':
+            lmpars_cko['k1'].set(value=0)
+            lmpars_cko['k2'].set(value=0)
+            lmpars_cko['k4'].set(value=0)
+        fig, axs = plt.subplots()
+        for stim in REF_STIM_LIST:
+            color = COLOR_LIST[stim]
+            if animal_rec is not None:
+                plot_single_fit(
+                    lmpars_cko, fig=fig, axs=axs, roll=False,
+                    plot_rec=True, plot_mod=False,
+                    plot_kws={'color': color},
+                    **self.data_dicts_dicts[animal_rec][stim]['fit_data_dict'])
+            if animal_mod is not None:
+                plot_single_fit(
+                    lmpars_cko, fig=fig, axs=axs, roll=False,
+                    plot_rec=False, plot_mod=True,
+                    plot_kws={'color': color},
+                    **self.data_dicts_dicts[animal_mod][stim]['fit_data_dict'])
+        axs.set_title('Method: %s Rec: %s Mod: %s' %
+                      (method, animal_rec, animal_mod))
+        axs.set_ylim(0, 200)
+        fig.tight_layout()
+        fig.savefig('./data/output/method_%s_rec_%s_mod_%s.png' %
+                    (method, animal_rec, animal_mod))
+        plt.close(fig)
+        return fig, axs
+    # %%
     fitApproach = fitApproach_dict['t3f123']
-    k_list = [key for key in fitApproach.ref_mean_lmpars.keys()
-              if key.startswith('k')]
-    k_combination_list = []
-    for i in range(1, len(k_list)):
-        k_combination_list.extend(list(combinations(k_list, i)))
-    for animal in CKO_ANIMAL_LIST:
-        for k_out_tuple in k_combination_list:
-            try:
-                fitApproach.plot_cko(animal, k_out_tuple)
-            except ValueError:
-                pass
+    fig, axs = plot_cko_customized(fitApproach, 'none',
+                                   animal_rec='Piezo2CONT')
+    fig, axs = plot_cko_customized(fitApproach, 'none',
+                                   animal_rec='Piezo2CKO')
+    fig, axs = plot_cko_customized(fitApproach, 'none',
+                                   animal_rec='Atoh1CKO')
+    fig, axs = plot_cko_customized(fitApproach, 'tau1tau2tau3tau4',
+                                   animal_mod='Piezo2CONT')
+    fig, axs = plot_cko_customized(fitApproach, 'tau1tau4',
+                                   animal_mod='Piezo2CONT')
+    fig, axs = plot_cko_customized(fitApproach, 'tau1tau3tau4',
+                                   animal_mod='Piezo2CONT')
+    fig, axs = plot_cko_customized(fitApproach, 'tau1tau21tau3',
+                                   animal_mod='Piezo2CONT')
+    fig, axs = plot_cko_customized(fitApproach, 'tau1',
+                                   animal_mod='Piezo2CONT')
+    fig, axs = plot_cko_customized(fitApproach, 'tau1tau3',
+                                   animal_mod='Piezo2CONT')
+    fig, axs = plot_cko_customized(fitApproach, 'tau1tau2tau3',
+                                   animal_mod='Piezo2CONT')
+    fig, axs = plot_cko_customized(fitApproach, 'tau3',
+                                   animal_mod='Piezo2CONT')
