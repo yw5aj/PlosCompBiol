@@ -6,6 +6,7 @@ Created on Tue Feb 16 10:25:32 2016
 """
 
 import numpy as np
+import pandas as pd
 import os
 from multiprocessing import Pool
 from collections import defaultdict
@@ -48,6 +49,16 @@ lmpars.add('k2', value=.3, vary=True, min=0)
 lmpars.add('k3', expr='k2')
 lmpars_init_dict['t2f12eqk23'] = lmpars
 
+# Approach t2f12highk1: use Adrienne's data, k3!=k2, k1 = 10*n2
+lmpars = Parameters()
+lmpars.add('tau1', value=8, vary=False)
+lmpars.add('tau2', value=200, vary=False)
+lmpars.add('tau3', value=np.inf, vary=False)
+lmpars.add('k1', value=1., vary=True, min=0)
+lmpars.add('k2', expr='k1 / 10')
+lmpars.add('k3', value=.1, vary=True, min=0)
+lmpars_init_dict['t2f12highk1'] = lmpars
+
 # Approach t2v12: let tau1 and tau2 float
 lmpars = Parameters()
 lmpars.add('tau1', value=8, vary=True, min=0, max=5000)
@@ -77,10 +88,10 @@ lmpars.add('tau1', value=8, vary=False)
 lmpars.add('tau2', value=200, vary=False)
 lmpars.add('tau3', value=1832, vary=False)
 lmpars.add('tau4', value=np.inf, vary=False)
-lmpars.add('k1', value=1., vary=True)
-lmpars.add('k2', value=.3, vary=True)
-lmpars.add('k3', value=.04, vary=True)
-lmpars.add('k4', value=.04, vary=True)
+lmpars.add('k1', value=2., vary=True, min=0)
+lmpars.add('k2', value=.5, vary=True, min=0)
+lmpars.add('k3', value=.1, vary=True, min=0)
+lmpars.add('k4', value=.1, vary=True, min=0)
 lmpars_init_dict['t3f123'] = lmpars
 
 
@@ -95,6 +106,31 @@ lmpars.add('k2', value=.3, vary=True)
 lmpars.add('k3', value=.04, vary=True)
 lmpars.add('k4', expr='k2')
 lmpars_init_dict['t3f123eqk24'] = lmpars
+
+# Approach t3f123highk1
+lmpars = Parameters()
+lmpars.add('tau1', value=8, vary=False)
+lmpars.add('tau2', value=200, vary=False)
+lmpars.add('tau3', value=1832, vary=False)
+lmpars.add('tau4', value=np.inf, vary=False)
+lmpars.add('k1', value=1., vary=True, min=0)
+lmpars.add('k2', expr='k1 / 20')
+lmpars.add('k3', value=.04, vary=True, min=0)
+lmpars.add('k4', value=.04, vary=True, min=0)
+lmpars_init_dict['t3f123highk1'] = lmpars
+
+
+# Approach t3f12v3
+lmpars = Parameters()
+lmpars.add('tau1', value=8, vary=False)
+lmpars.add('tau2', value=200, vary=False)
+lmpars.add('tau3', value=1832, vary=True)
+lmpars.add('tau4', value=np.inf, vary=False)
+lmpars.add('k1', value=1., vary=True, min=0)
+lmpars.add('k2', value=.3, vary=True, min=0)
+lmpars.add('k3', value=.04, vary=True, min=0)
+lmpars.add('k4', value=.04, vary=True, min=0)
+lmpars_init_dict['t3f12v3'] = lmpars
 
 
 def get_log_sample_after_peak(spike_time, fr_roll, n_sample):
@@ -218,7 +254,8 @@ def get_data_dicts(stim, animal=None, rec_dict=None):
     # Read model data
     time, stress = get_interp_stress(static_displ)
     max_time = rec_dict['max_time_list'][stim]
-    stretch_coeff = 1 + 0.25 * static_displ / REF_DISPL
+#    stretch_coeff = 1 + 0.25 * static_displ / REF_DISPL
+    stretch_coeff = 1 + 0.4 * static_displ / REF_DISPL
     stress = adjust_stress_ramp_time(time, stress, max_time, stretch_coeff)
     mod_data_dict = {
         'groups': MC_GROUPS,
@@ -463,6 +500,30 @@ if __name__ == '__main__':
             lmpars_cko['k1'].set(value=0)
             lmpars_cko['k2'].set(value=0)
             lmpars_cko['k4'].set(value=0)
+        elif method == 'tau2':
+            lmpars_cko['k1'].set(value=0)
+            lmpars_cko['k3'].set(value=0)
+            lmpars_cko['k4'].set(value=0)
+        elif method == 'tau1tau2':
+            lmpars_cko['k3'].set(value=0)
+            lmpars_cko['k4'].set(value=0)
+        elif method == 'tau1tau41':
+            lmpars_cko['k4'].set(value=lmpars_cko['k4'] * .268)
+            lmpars_cko['k2'].set(value=0)
+            lmpars_cko['k3'].set(value=0)
+        elif method == 'tau1tau31':
+            lmpars_cko['k4'].set(value=0)
+            lmpars_cko['k2'].set(value=0)
+            lmpars_cko['k3'].set(value=lmpars_cko['k3'] * .3)
+        elif method == 'tau31':
+            lmpars_cko['k4'].set(value=0)
+            lmpars_cko['k2'].set(value=0)
+            lmpars_cko['k1'].set(value=0)
+            lmpars_cko['k3'].set(value=lmpars_cko['k3'] * .7)
+        elif method == 'tau2tau31':
+            lmpars_cko['k4'].set(value=0)
+            lmpars_cko['k1'].set(value=0)
+            lmpars_cko['k3'].set(value=lmpars_cko['k3'] * .3)
         fig, axs = plt.subplots()
         for stim in REF_STIM_LIST:
             color = COLOR_LIST[stim]
@@ -510,3 +571,27 @@ if __name__ == '__main__':
                                    animal_mod='Piezo2CONT')
     fig, axs = plot_cko_customized(fitApproach, 'tau3',
                                    animal_mod='Piezo2CONT')
+    fig, axs = plot_cko_customized(fitApproach, 'tau2',
+                                   animal_mod='Piezo2CONT')
+    fig, axs = plot_cko_customized(fitApproach, 'tau1tau2',
+                                   animal_mod='Piezo2CONT')
+    fig, axs = plot_cko_customized(fitApproach, 'tau1tau41',
+                                   animal_mod='Piezo2CONT')
+    fig, axs = plot_cko_customized(fitApproach, 'tau1tau31',
+                                   animal_mod='Piezo2CONT')
+    fig, axs = plot_cko_customized(fitApproach, 'tau31',
+                                   animal_mod='Piezo2CONT')
+    fig, axs = plot_cko_customized(fitApproach, 'tau2tau31',
+                                   animal_mod='Piezo2CONT')
+    # %%
+    params_ser = pd.Series(fitApproach.ref_mean_lmpars.valuesdict())
+    params_justified = pd.Series()
+    params_justified['tau1'] = params_ser['tau1']
+    params_justified['tau2'] = params_ser['tau2']
+    params_justified['tau3'] = params_ser['tau3']
+    params_justified['knr'] = params_ser['k1']
+    params_justified['kmc'] = params_ser['k2'] + params_ser['k4']
+    params_justified['kmc1'] = params_ser['k2'] / params_justified['kmc']
+    params_justified['kmc2'] = params_ser['k4'] / params_justified['kmc']
+    params_justified['kusa'] = params_ser['k3']
+    params_justified.to_clipboard()
