@@ -88,10 +88,10 @@ lmpars.add('tau1', value=8, vary=False)
 lmpars.add('tau2', value=200, vary=False)
 lmpars.add('tau3', value=1832, vary=False)
 lmpars.add('tau4', value=np.inf, vary=False)
-lmpars.add('k1', value=2., vary=True, min=0)
+lmpars.add('k1', value=1., vary=True, min=0)
 lmpars.add('k2', value=.5, vary=True, min=0)
-lmpars.add('k3', value=.1, vary=True, min=0)
-lmpars.add('k4', value=.1, vary=True, min=0)
+lmpars.add('k3', value=.05, vary=True, min=0)
+lmpars.add('k4', value=.05, vary=True, min=0)
 lmpars_init_dict['t3f123'] = lmpars
 
 
@@ -584,14 +584,25 @@ if __name__ == '__main__':
     fig, axs = plot_cko_customized(fitApproach, 'tau2tau31',
                                    animal_mod='Piezo2CONT')
     # %%
-    params_ser = pd.Series(fitApproach.ref_mean_lmpars.valuesdict())
-    params_justified = pd.Series()
-    params_justified['tau1'] = params_ser['tau1']
-    params_justified['tau2'] = params_ser['tau2']
-    params_justified['tau3'] = params_ser['tau3']
-    params_justified['knr'] = params_ser['k1']
-    params_justified['kmc'] = params_ser['k2'] + params_ser['k4']
-    params_justified['kmc1'] = params_ser['k2'] / params_justified['kmc']
-    params_justified['kmc2'] = params_ser['k4'] / params_justified['kmc']
-    params_justified['kusa'] = params_ser['k3']
-    params_justified.to_clipboard()
+
+    def get_params_table(lmpars):
+        params_ser = pd.Series(lmpars.valuesdict())
+        params_paper = pd.Series()
+        params_paper['tau1'] = params_ser['tau1']
+        params_paper['tau2'] = params_ser['tau2']
+        if 'tau4' in params_ser.keys():
+            params_paper['tau3'] = params_ser['tau3']
+        params_paper['knr'] = params_ser['k1']
+        if 'tau4' in params_ser.keys():
+            params_paper['kmc'] = params_ser['k2'] + params_ser['k4']
+            params_paper['kmc1'] = params_ser['k2'] / params_paper['kmc']
+            params_paper['kmc2'] = params_ser['k4'] / params_paper['kmc']
+            params_paper['kusa'] = params_ser['k3']
+        else:
+            params_paper['kmc'] = params_ser['k2'] + params_ser['k3']
+            params_paper['kmc1'] = params_ser['k2'] / params_paper['kmc']
+            params_paper['kmc2'] = params_ser['k3'] / params_paper['kmc']
+        return params_paper
+    params_table_dict = {key: get_params_table(value.ref_mean_lmpars)
+                         for key, value in fitApproach_dict.items()}
+
