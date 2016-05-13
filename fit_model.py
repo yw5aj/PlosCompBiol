@@ -583,9 +583,9 @@ if __name__ == '__main__':
                                    animal_mod='Piezo2CONT')
     fig, axs = plot_cko_customized(fitApproach, 'tau2tau31',
                                    animal_mod='Piezo2CONT')
-    # %%
+    # %% Generate the copy-pasteable table for paper writing
 
-    def get_params_table(lmpars):
+    def get_params_paper(lmpars):
         params_ser = pd.Series(lmpars.valuesdict())
         params_paper = pd.Series()
         params_paper['tau1'] = params_ser['tau1']
@@ -603,6 +603,6 @@ if __name__ == '__main__':
             params_paper['kmc1'] = params_ser['k2'] / params_paper['kmc']
             params_paper['kmc2'] = params_ser['k3'] / params_paper['kmc']
         return params_paper
-    params_table_dict = {key: get_params_table(value.ref_mean_lmpars)
+    params_paper_dict = {key: get_params_paper(value.ref_mean_lmpars)
                          for key, value in fitApproach_dict.items()}
 
