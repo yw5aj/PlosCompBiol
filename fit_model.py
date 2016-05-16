@@ -544,7 +544,7 @@ if __name__ == '__main__':
             fitApproach.ref_mean_lmpars,
             **fitApproach.data_dicts_dicts[animal][stim]['mod_data_dict'])
         plot_kws = dict(ymin=-.5 - stim, ymax=.5 - stim,
-                        color=COLOR_LIST[stim])
+                        color=COLOR_LIST[stim], linewidth=.5)
         axs[0, 0].vlines(mod_spike_time, **plot_kws)
         axs[0, 0].axhline(-stim, color=COLOR_LIST[stim])
         axs[0, 0].set_ylim(-3.5, 1.5)
