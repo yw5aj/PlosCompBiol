@@ -23,7 +23,7 @@ from stress_to_spike import (stress_to_fr_inst, spike_time_to_fr_roll,
 from model_constants import (MC_GROUPS, FS, ANIMAL_LIST, STIM_NUM,
                              REF_ANIMAL, REF_STIM_LIST, WINDOW, REF_DISPL,
                              COLOR_LIST, CKO_ANIMAL_LIST)
-from gen_function import get_interp_stress
+from gen_function import get_interp_stress, stress_to_current
 
 
 # Define parameters for fitting
@@ -334,6 +334,16 @@ def get_mean_lmpar(lmpar_list):
     return mean_lmpar
 
 
+def get_lmpars_cko(lmpars, k_remain_list, label):
+    lmpars_cko = copy.deepcopy(lmpars)
+    k_full_set = set(['k%d' % i
+                      for i in np.arange(int(label[1]) + 1) + 1])
+    for k in k_full_set:
+        if k not in k_remain_list:
+            lmpars_cko[k].set(value=0)
+    return lmpars_cko
+
+
 class FitApproach():
     """
     If the parameters are stored in `data/fit`, then will load from file;
@@ -450,34 +460,23 @@ class FitApproach():
         fig.savefig('./data/output/%s_%s.png' % (animal, label))
         plt.close(fig)
 
-    def plot_all_cko(self, animal_list=CKO_ANIMAL_LIST):
-        k_list = [key for key in self.ref_mean_lmpars.keys()
-                  if key.startswith('k')]
-        k_combination_list = []
-        for i in range(1, len(k_list)):
-            k_combination_list.extend(list(combinations(k_list, i)))
-        for animal in animal_list:
-            for k_out_tuple in k_combination_list:
-                try:
-                    self.plot_cko(animal, k_out_tuple)
-                except ValueError:
-                    pass
-
     def plot_cko_customized(self, k_remain_list,
                             animal_rec=None, animal_mod=None,
-                            fig=None, axs=None, close_fig=False):
+                            fig=None, axs=None,
+                            close_fig=False, save_fig=False):
         lmpars_cko = copy.deepcopy(self.ref_mean_lmpars)
         k_full_set = set(['k%d' % i
                           for i in np.arange(int(self.label[1]) + 1) + 1])
         for k in k_full_set:
             if k not in k_remain_list:
-                print(k)
+                lmpars_cko[k].set(value=0)
         label = str(k_remain_list).replace('k', 'tau').replace(
             '\'', '').replace(',', '').replace('[', '').replace(
             ']', '').replace(' ', '')
         if fig is None and axs is None:
             fig, axs = plt.subplots()
             close_fig = True
+            save_fig = True
         for stim in REF_STIM_LIST:
             color = COLOR_LIST[stim]
             if animal_rec is not None:
@@ -495,9 +494,10 @@ class FitApproach():
         axs.set_title('Method: %s Rec: %s Mod: %s' %
                       (label, animal_rec, animal_mod))
         axs.set_ylim(0, 200)
-        fig.tight_layout()
-        fig.savefig('./data/output/method_%s_rec_%s_mod_%s.png' %
-                    (label, animal_rec, animal_mod))
+        if save_fig:
+            fig.tight_layout()
+            fig.savefig('./data/output/method_%s_rec_%s_mod_%s.png' %
+                        (label, animal_rec, animal_mod))
         if close_fig:
             plt.close(fig)
         return fig, axs
@@ -538,7 +538,7 @@ if __name__ == '__main__':
     fig, axs = plt.subplots(2, 2, figsize=(7, 5))
     animal = 'Piezo2CONT'
     # Raw spikes
-    for i, stim in enumerate([0, 2]):
+    for i, stim in enumerate(REF_STIM_LIST):
         # Spike timings of the model
         mod_spike_time, mod_fr_inst = get_mod_spike(
             fitApproach.ref_mean_lmpars,
@@ -550,13 +550,30 @@ if __name__ == '__main__':
         axs[0, 0].set_ylim(-3.5, 1.5)
         axs[0, 0].set_ylabel('Spikes')
         axs[0, 0].get_yaxis().set_ticks([])
+        # Add the bar on top
+        mod_peak_time = mod_spike_time[mod_fr_inst.argmax()]
+        axs[0, 0].plot([mod_peak_time, 5000], [2 - stim * .15, 2 - stim * .15],
+                       lw=4, c='.5', clip_on=False)
+        axs[0, 0].plot([0, mod_peak_time], [2 - stim * .15, 2 - stim * .15],
+                       lw=4, color='k', clip_on=False)
+        axs[0, 0].set_xlim(0, 5000)
+        axs[0, 0].set_xlabel('Time (msec)')
         # Spike timings of the recording
-        axs[0, 1].vlines(
-            fitApproach.rec_dicts[animal]['spike_time_list'][stim], **plot_kws)
+        rec_spike_time = fitApproach.rec_dicts[animal]['spike_time_list'][stim]
+        rec_fr_roll = fitApproach.rec_dicts[animal]['fr_roll_list'][stim]
+        axs[0, 1].vlines(rec_spike_time, **plot_kws)
         axs[0, 1].axhline(-stim, color=COLOR_LIST[stim])
         axs[0, 1].set_ylim(-3.5, 1.5)
         axs[0, 1].set_ylabel('Spikes')
         axs[0, 1].get_yaxis().set_ticks([])
+        # Add the bar on top
+        rec_peak_time = rec_spike_time[rec_fr_roll.argmax()]
+        axs[0, 1].plot([rec_peak_time, 5000], [2 - stim * .15, 2 - stim * .15],
+                       lw=4, c='.5', clip_on=False)
+        axs[0, 1].plot([0, rec_peak_time], [2 - stim * .15, 2 - stim * .15],
+                       lw=4, color='k', clip_on=False)
+        axs[0, 1].set_xlim(0, 5000)
+        axs[0, 1].set_xlabel('Time (msec)')
     # Firing rates
     fitApproach.plot_cko_customized(
         ['k1', 'k2', 'k3', 'k4'], fig=fig, axs=axs[1, 0],
@@ -570,7 +587,81 @@ if __name__ == '__main__':
         axes.text(-.15, 1.05, chr(65+axes_id), transform=axes.transAxes,
                   fontsize=12, fontweight='bold', va='top')
     fig.tight_layout()
+    fig.subplots_adjust(top=.95)
     fig.savefig('./data/output/fig5.png', dpi=300)
     fig.savefig('./data/output/fig5.pdf', dpi=300)
     plt.close(fig)
-    # %% Figure 1
+    # %% Figure 6
+    fitApproach = fitApproach_dict['t3f123']
+    fig, axs = plt.subplots(3, 3, figsize=(7, 6))
+    k_remain_list_dict = {
+        'Piezo2CONT': ['k1', 'k2', 'k3', 'k4'],
+        'Piezo2CKO': ['k1', 'k2', 'k3'],
+        'Atoh1CKO': ['k1', 'k3']}
+    for i, animal in enumerate(ANIMAL_LIST):
+        lmpars_cko = get_lmpars_cko(fitApproach.ref_mean_lmpars,
+                                    k_remain_list_dict[animal],
+                                    fitApproach.label)
+        # Plot current
+        for stim in REF_STIM_LIST:
+            fine_time = fitApproach.data_dicts_dicts[animal][stim][
+                'mod_data_dict']['time']
+            fine_stress = fitApproach.data_dicts_dicts[animal][stim][
+                'mod_data_dict']['stress']
+            params_dict = lmpars_to_params(lmpars_cko)
+            single_current = stress_to_current(fine_time, fine_stress,
+                                               **params_dict).sum(axis=1)
+            axs[0, i].plot(fine_time, -single_current, color=COLOR_LIST[stim])
+            axs[0, i].set_xlabel('Time (msec)')
+            axs[0, i].set_ylabel('Current (pA)')
+            axs[0, i].set_ylim(-20, 0)
+            # Add the bar on top
+            mod_peak_time = fine_time[single_current.argmax()]
+            axs[0, i].plot([mod_peak_time, 5000],
+                           [2 - stim * .5, 2 - stim * .5], '-',
+                           lw=4, c='.5', clip_on=False)
+            axs[0, i].plot([0, mod_peak_time],
+                           [2 - stim * .5, 2 - stim * .5], '-',
+                           lw=4, color='k', clip_on=False)
+            axs[0, i].set_xlim(0, 5000)
+        # Plot firing rate
+        fitApproach.plot_cko_customized(
+            k_remain_list_dict[animal], fig=fig, axs=axs[1, i],
+            animal_mod='Piezo2CONT', animal_rec=None)
+        fitApproach.plot_cko_customized(
+            k_remain_list_dict[animal], fig=fig, axs=axs[2, i],
+            animal_mod=None, animal_rec=animal)
+        # Add the bar on top for rec
+        for stim in REF_STIM_LIST:
+            rec_spike_time = fitApproach.rec_dicts[animal]['spike_time_list'][
+                stim]
+            rec_fr_roll = fitApproach.rec_dicts[animal]['fr_roll_list'][stim]
+            rec_peak_time = rec_spike_time[rec_fr_roll.argmax()]
+            axs[2, i].plot([rec_peak_time, 5000],
+                           [220 - stim * 5, 220 - stim * 5], '-',
+                           lw=4, c='.5', clip_on=False)
+            axs[2, i].plot([0, rec_peak_time],
+                           [220 - stim * 5, 220 - stim * 5], '-',
+                           lw=4, color='k', clip_on=False)
+            axs[2, i].set_xlim(0, 5000)
+    for axes in axs.ravel():
+        axes.set_title('')
+    fig.tight_layout()
+    fig.tight_layout()
+    fig.subplots_adjust(top=.95)
+    for axes_id, axes in enumerate(axs.ravel()):
+        axes.text(-.25, 1.05, chr(65+axes_id), transform=axes.transAxes,
+                  fontsize=12, fontweight='bold', va='top')
+    fig.savefig('./data/output/fig6.png')
+    fig.savefig('./data/output/fig6.pdf')
+    plt.close(fig)
+    # %% Figure 3
+    animal = 'Piezo2CONT'
+    stim = 0
+    params_dict = lmpars_to_params(fitApproach.ref_mean_lmpars)
+    fine_time = fitApproach.data_dicts_dicts[animal][stim][
+        'mod_data_dict']['time']
+    fine_stress = fitApproach.data_dicts_dicts[animal][stim][
+        'mod_data_dict']['stress']
+    single_current = stress_to_current(fine_time, fine_stress,
+                                       **params_dict)
