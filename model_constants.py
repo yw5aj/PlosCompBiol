@@ -49,5 +49,5 @@ FE_NUM = np.max(fe_id_list) + 1
 REF_DISPL = .6
 
 # %% For plotting
-COLOR_LIST = ['k', 'r', 'g', 'b', 'c', 'm', 'y', 'r', 'g', 'b']
+COLOR_LIST = ['.5', 'r', 'k', 'b', 'c', 'm', 'y', 'r', 'g', 'b']
 

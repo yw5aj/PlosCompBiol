@@ -474,7 +474,8 @@ if __name__ == '__main__':
         fitApproach_dict[approach] = fitApproach
     # %%
 
-    def plot_cko_customized(self, method, animal_rec=None, animal_mod=None):
+    def plot_cko_customized(self, method, animal_rec=None, animal_mod=None,
+                            fig=None, axs=None):
         lmpars_cko = copy.deepcopy(self.ref_mean_lmpars)
         if method == 'tau1tau2tau3tau4':
             pass
@@ -524,7 +525,9 @@ if __name__ == '__main__':
             lmpars_cko['k4'].set(value=0)
             lmpars_cko['k1'].set(value=0)
             lmpars_cko['k3'].set(value=lmpars_cko['k3'] * .3)
-        fig, axs = plt.subplots()
+        if fig is None and axs is None:
+            fig, axs = plt.subplots()
+            close_fig = True
         for stim in REF_STIM_LIST:
             color = COLOR_LIST[stim]
             if animal_rec is not None:
@@ -545,7 +548,8 @@ if __name__ == '__main__':
         fig.tight_layout()
         fig.savefig('./data/output/method_%s_rec_%s_mod_%s.png' %
                     (method, animal_rec, animal_mod))
-        plt.close(fig)
+        if close_fig:
+            plt.close(fig)
         return fig, axs
     # %%
     fitApproach = fitApproach_dict['t3f123']
@@ -605,4 +609,11 @@ if __name__ == '__main__':
         return params_paper
     params_paper_dict = {key: get_params_paper(value.ref_mean_lmpars)
                          for key, value in fitApproach_dict.items()}
-
+    # %% Figure 5
+    fitApproach = fitApproach_dict['t3f123']
+    fig, axs = plot_cko_customized(fitApproach, 'tau1tau2tau3tau4',
+                                   animal_mod='Piezo2CONT',
+                                   animal_rec='Piezo2CONT')
+    axs.set_title('')
+    fig.savefig('./data/output/fig5.png', dpi=300)
+    fig.savefig('./data/output/fig5.pdf', dpi=300)
