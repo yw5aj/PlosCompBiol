@@ -463,68 +463,18 @@ class FitApproach():
                 except ValueError:
                     pass
 
-
-if __name__ == '__main__':
-    pass
-    # %%
-    fitApproach_dict = {}
-    for approach, lmpars_init in lmpars_init_dict.items():
-        lmpars_init = lmpars_init_dict[approach]
-        fitApproach = FitApproach(lmpars_init, approach)
-        fitApproach_dict[approach] = fitApproach
-    # %%
-
-    def plot_cko_customized(self, method, animal_rec=None, animal_mod=None,
-                            fig=None, axs=None):
+    def plot_cko_customized(self, k_remain_list,
+                            animal_rec=None, animal_mod=None,
+                            fig=None, axs=None, close_fig=False):
         lmpars_cko = copy.deepcopy(self.ref_mean_lmpars)
-        if method == 'tau1tau2tau3tau4':
-            pass
-        elif method == 'tau1tau4':
-            lmpars_cko['k2'].set(value=0)
-            lmpars_cko['k3'].set(value=0)
-        elif method == 'tau1tau3tau4':
-            lmpars_cko['k2'].set(value=0)
-        elif method == 'tau1tau21tau3':
-            lmpars_cko['k4'].set(value=0)
-            lmpars_cko['k2'].set(value=lmpars_cko['k2'].value -
-                                 lmpars_cko['k4'].value)
-        elif method == 'tau1':
-            lmpars_cko['k2'].set(value=0)
-            lmpars_cko['k3'].set(value=0)
-            lmpars_cko['k4'].set(value=0)
-        elif method == 'tau1tau3':
-            lmpars_cko['k2'].set(value=0)
-            lmpars_cko['k4'].set(value=0)
-        elif method == 'tau1tau2tau3':
-            lmpars_cko['k4'].set(value=0)
-        elif method == 'tau3':
-            lmpars_cko['k1'].set(value=0)
-            lmpars_cko['k2'].set(value=0)
-            lmpars_cko['k4'].set(value=0)
-        elif method == 'tau2':
-            lmpars_cko['k1'].set(value=0)
-            lmpars_cko['k3'].set(value=0)
-            lmpars_cko['k4'].set(value=0)
-        elif method == 'tau1tau2':
-            lmpars_cko['k3'].set(value=0)
-            lmpars_cko['k4'].set(value=0)
-        elif method == 'tau1tau41':
-            lmpars_cko['k4'].set(value=lmpars_cko['k4'] * .268)
-            lmpars_cko['k2'].set(value=0)
-            lmpars_cko['k3'].set(value=0)
-        elif method == 'tau1tau31':
-            lmpars_cko['k4'].set(value=0)
-            lmpars_cko['k2'].set(value=0)
-            lmpars_cko['k3'].set(value=lmpars_cko['k3'] * .3)
-        elif method == 'tau31':
-            lmpars_cko['k4'].set(value=0)
-            lmpars_cko['k2'].set(value=0)
-            lmpars_cko['k1'].set(value=0)
-            lmpars_cko['k3'].set(value=lmpars_cko['k3'] * .7)
-        elif method == 'tau2tau31':
-            lmpars_cko['k4'].set(value=0)
-            lmpars_cko['k1'].set(value=0)
-            lmpars_cko['k3'].set(value=lmpars_cko['k3'] * .3)
+        k_full_set = set(['k%d' % i
+                          for i in np.arange(int(self.label[1]) + 1) + 1])
+        for k in k_full_set:
+            if k not in k_remain_list:
+                print(k)
+        label = str(k_remain_list).replace('k', 'tau').replace(
+            '\'', '').replace(',', '').replace('[', '').replace(
+            ']', '').replace(' ', '')
         if fig is None and axs is None:
             fig, axs = plt.subplots()
             close_fig = True
@@ -543,50 +493,24 @@ if __name__ == '__main__':
                     plot_kws={'color': color},
                     **self.data_dicts_dicts[animal_mod][stim]['fit_data_dict'])
         axs.set_title('Method: %s Rec: %s Mod: %s' %
-                      (method, animal_rec, animal_mod))
+                      (label, animal_rec, animal_mod))
         axs.set_ylim(0, 200)
         fig.tight_layout()
         fig.savefig('./data/output/method_%s_rec_%s_mod_%s.png' %
-                    (method, animal_rec, animal_mod))
+                    (label, animal_rec, animal_mod))
         if close_fig:
             plt.close(fig)
         return fig, axs
+
+
+if __name__ == '__main__':
+    pass
     # %%
-    fitApproach = fitApproach_dict['t3f123']
-    fig, axs = plot_cko_customized(fitApproach, 'none',
-                                   animal_rec='Piezo2CONT')
-    fig, axs = plot_cko_customized(fitApproach, 'none',
-                                   animal_rec='Piezo2CKO')
-    fig, axs = plot_cko_customized(fitApproach, 'none',
-                                   animal_rec='Atoh1CKO')
-    fig, axs = plot_cko_customized(fitApproach, 'tau1tau2tau3tau4',
-                                   animal_mod='Piezo2CONT')
-    fig, axs = plot_cko_customized(fitApproach, 'tau1tau4',
-                                   animal_mod='Piezo2CONT')
-    fig, axs = plot_cko_customized(fitApproach, 'tau1tau3tau4',
-                                   animal_mod='Piezo2CONT')
-    fig, axs = plot_cko_customized(fitApproach, 'tau1tau21tau3',
-                                   animal_mod='Piezo2CONT')
-    fig, axs = plot_cko_customized(fitApproach, 'tau1',
-                                   animal_mod='Piezo2CONT')
-    fig, axs = plot_cko_customized(fitApproach, 'tau1tau3',
-                                   animal_mod='Piezo2CONT')
-    fig, axs = plot_cko_customized(fitApproach, 'tau1tau2tau3',
-                                   animal_mod='Piezo2CONT')
-    fig, axs = plot_cko_customized(fitApproach, 'tau3',
-                                   animal_mod='Piezo2CONT')
-    fig, axs = plot_cko_customized(fitApproach, 'tau2',
-                                   animal_mod='Piezo2CONT')
-    fig, axs = plot_cko_customized(fitApproach, 'tau1tau2',
-                                   animal_mod='Piezo2CONT')
-    fig, axs = plot_cko_customized(fitApproach, 'tau1tau41',
-                                   animal_mod='Piezo2CONT')
-    fig, axs = plot_cko_customized(fitApproach, 'tau1tau31',
-                                   animal_mod='Piezo2CONT')
-    fig, axs = plot_cko_customized(fitApproach, 'tau31',
-                                   animal_mod='Piezo2CONT')
-    fig, axs = plot_cko_customized(fitApproach, 'tau2tau31',
-                                   animal_mod='Piezo2CONT')
+    fitApproach_dict = {}
+    for approach, lmpars_init in lmpars_init_dict.items():
+        lmpars_init = lmpars_init_dict[approach]
+        fitApproach = FitApproach(lmpars_init, approach)
+        fitApproach_dict[approach] = fitApproach
     # %% Generate the copy-pasteable table for paper writing
 
     def get_params_paper(lmpars):
@@ -611,9 +535,42 @@ if __name__ == '__main__':
                          for key, value in fitApproach_dict.items()}
     # %% Figure 5
     fitApproach = fitApproach_dict['t3f123']
-    fig, axs = plot_cko_customized(fitApproach, 'tau1tau2tau3tau4',
-                                   animal_mod='Piezo2CONT',
-                                   animal_rec='Piezo2CONT')
-    axs.set_title('')
+    fig, axs = plt.subplots(2, 2, figsize=(7, 5))
+    animal = 'Piezo2CONT'
+    # Raw spikes
+    for i, stim in enumerate([0, 2]):
+        # Spike timings of the model
+        mod_spike_time, mod_fr_inst = get_mod_spike(
+            fitApproach.ref_mean_lmpars,
+            **fitApproach.data_dicts_dicts[animal][stim]['mod_data_dict'])
+        plot_kws = dict(ymin=-.5 - stim, ymax=.5 - stim,
+                        color=COLOR_LIST[stim])
+        axs[0, 0].vlines(mod_spike_time, **plot_kws)
+        axs[0, 0].axhline(-stim, color=COLOR_LIST[stim])
+        axs[0, 0].set_ylim(-3.5, 1.5)
+        axs[0, 0].set_ylabel('Spikes')
+        axs[0, 0].get_yaxis().set_ticks([])
+        # Spike timings of the recording
+        axs[0, 1].vlines(
+            fitApproach.rec_dicts[animal]['spike_time_list'][stim], **plot_kws)
+        axs[0, 1].axhline(-stim, color=COLOR_LIST[stim])
+        axs[0, 1].set_ylim(-3.5, 1.5)
+        axs[0, 1].set_ylabel('Spikes')
+        axs[0, 1].get_yaxis().set_ticks([])
+    # Firing rates
+    fitApproach.plot_cko_customized(
+        ['k1', 'k2', 'k3', 'k4'], fig=fig, axs=axs[1, 0],
+        animal_mod=animal, animal_rec=None)
+    fitApproach.plot_cko_customized(
+        ['k1', 'k2', 'k3', 'k4'], fig=fig, axs=axs[1, 1],
+        animal_mod=None, animal_rec=animal)
+    for axes in axs.ravel():
+        axes.set_title('')
+    for axes_id, axes in enumerate(axs.ravel()):
+        axes.text(-.15, 1.05, chr(65+axes_id), transform=axes.transAxes,
+                  fontsize=12, fontweight='bold', va='top')
+    fig.tight_layout()
     fig.savefig('./data/output/fig5.png', dpi=300)
     fig.savefig('./data/output/fig5.pdf', dpi=300)
+    plt.close(fig)
+    # %% Figure 1
