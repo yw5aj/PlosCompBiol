@@ -334,14 +334,34 @@ def get_mean_lmpar(lmpar_list):
     return mean_lmpar
 
 
-def get_lmpars_cko(lmpars, k_remain_list, label):
+def get_lmpars_cko(lmpars, k_scale_dict):
     lmpars_cko = copy.deepcopy(lmpars)
-    k_full_set = set(['k%d' % i
-                      for i in np.arange(int(label[1]) + 1) + 1])
-    for k in k_full_set:
-        if k not in k_remain_list:
-            lmpars_cko[k].set(value=0)
+    for k, scale in k_scale_dict.items():
+        lmpars_cko[k].value *= scale
     return lmpars_cko
+
+
+def get_params_paper(lmpars):
+    """
+    Generate the copy-pasteable table for paper writing
+    """
+    params_ser = pd.Series(lmpars.valuesdict())
+    params_paper = pd.Series()
+    params_paper['tau1'] = params_ser['tau1']
+    params_paper['tau2'] = params_ser['tau2']
+    if 'tau4' in params_ser.keys():
+        params_paper['tau3'] = params_ser['tau3']
+    params_paper['knr'] = params_ser['k1']
+    if 'tau4' in params_ser.keys():
+        params_paper['kmc'] = params_ser['k2'] + params_ser['k4']
+        params_paper['kmc1'] = params_ser['k2'] / params_paper['kmc']
+        params_paper['kmc2'] = params_ser['k4'] / params_paper['kmc']
+        params_paper['kusa'] = params_ser['k3']
+    else:
+        params_paper['kmc'] = params_ser['k2'] + params_ser['k3']
+        params_paper['kmc1'] = params_ser['k2'] / params_paper['kmc']
+        params_paper['kmc2'] = params_ser['k3'] / params_paper['kmc']
+    return params_paper
 
 
 class FitApproach():
@@ -442,37 +462,14 @@ class FitApproach():
         fig.tight_layout()
         return fig, axs
 
-    def plot_cko(self, animal, k_out_list):
-        label = str(k_out_list).replace('\'', '').replace('(', '').replace(
-            ')', '').replace(',', '').replace(' ', '')
-        lmpars_cko = copy.deepcopy(self.ref_mean_lmpars)
-        for k_out in k_out_list:
-            lmpars_cko[k_out].set(value=0)
-        fig, axs = plt.subplots()
-        for stim in range(STIM_NUM):
-            color = COLOR_LIST[stim]
-            plot_single_fit(
-                lmpars_cko, fig=fig, axs=axs, roll=False,
-                plot_kws={'color': color},
-                **self.data_dicts_dicts[animal][stim]['fit_data_dict'])
-        axs.set_title('Eliminating %s for %s' % (label, animal))
-        fig.tight_layout()
-        fig.savefig('./data/output/%s_%s.png' % (animal, label))
-        plt.close(fig)
-
-    def plot_cko_customized(self, k_remain_list,
+    def plot_cko_customized(self, k_scale_dict,
                             animal_rec=None, animal_mod=None,
                             fig=None, axs=None,
-                            close_fig=False, save_fig=False):
+                            close_fig=False, save_fig=False, show_label=False):
         lmpars_cko = copy.deepcopy(self.ref_mean_lmpars)
-        k_full_set = set(['k%d' % i
-                          for i in np.arange(int(self.label[1]) + 1) + 1])
-        for k in k_full_set:
-            if k not in k_remain_list:
-                lmpars_cko[k].set(value=0)
-        label = str(k_remain_list).replace('k', 'tau').replace(
-            '\'', '').replace(',', '').replace('[', '').replace(
-            ']', '').replace(' ', '')
+        for k, scale in k_scale_dict.items():
+            lmpars_cko[k].value *= scale
+        label = str(k_scale_dict).translate({ord(c): None for c in '{}\': .,'})
         if fig is None and axs is None:
             fig, axs = plt.subplots()
             close_fig = True
@@ -491,8 +488,9 @@ class FitApproach():
                     plot_rec=False, plot_mod=True,
                     plot_kws={'color': color},
                     **self.data_dicts_dicts[animal_mod][stim]['fit_data_dict'])
-        axs.set_title('Method: %s Rec: %s Mod: %s' %
-                      (label, animal_rec, animal_mod))
+        if show_label:
+            axs.set_title('Method: %s Rec: %s Mod: %s' %
+                          (label, animal_rec, animal_mod))
         axs.set_ylim(0, 200)
         if save_fig:
             fig.tight_layout()
@@ -511,28 +509,6 @@ if __name__ == '__main__':
         lmpars_init = lmpars_init_dict[approach]
         fitApproach = FitApproach(lmpars_init, approach)
         fitApproach_dict[approach] = fitApproach
-    # %% Generate the copy-pasteable table for paper writing
-
-    def get_params_paper(lmpars):
-        params_ser = pd.Series(lmpars.valuesdict())
-        params_paper = pd.Series()
-        params_paper['tau1'] = params_ser['tau1']
-        params_paper['tau2'] = params_ser['tau2']
-        if 'tau4' in params_ser.keys():
-            params_paper['tau3'] = params_ser['tau3']
-        params_paper['knr'] = params_ser['k1']
-        if 'tau4' in params_ser.keys():
-            params_paper['kmc'] = params_ser['k2'] + params_ser['k4']
-            params_paper['kmc1'] = params_ser['k2'] / params_paper['kmc']
-            params_paper['kmc2'] = params_ser['k4'] / params_paper['kmc']
-            params_paper['kusa'] = params_ser['k3']
-        else:
-            params_paper['kmc'] = params_ser['k2'] + params_ser['k3']
-            params_paper['kmc1'] = params_ser['k2'] / params_paper['kmc']
-            params_paper['kmc2'] = params_ser['k3'] / params_paper['kmc']
-        return params_paper
-    params_paper_dict = {key: get_params_paper(value.ref_mean_lmpars)
-                         for key, value in fitApproach_dict.items()}
     # %% Figure 5
     fitApproach = fitApproach_dict['t3f123']
     fig, axs = plt.subplots(2, 2, figsize=(7, 5))
@@ -576,10 +552,10 @@ if __name__ == '__main__':
         axs[0, 1].set_xlabel('Time (msec)')
     # Firing rates
     fitApproach.plot_cko_customized(
-        ['k1', 'k2', 'k3', 'k4'], fig=fig, axs=axs[1, 0],
+        {}, fig=fig, axs=axs[1, 0],
         animal_mod=animal, animal_rec=None)
     fitApproach.plot_cko_customized(
-        ['k1', 'k2', 'k3', 'k4'], fig=fig, axs=axs[1, 1],
+        {}, fig=fig, axs=axs[1, 1],
         animal_mod=None, animal_rec=animal)
     for axes in axs.ravel():
         axes.set_title('')
@@ -594,14 +570,13 @@ if __name__ == '__main__':
     # %% Figure 6
     fitApproach = fitApproach_dict['t3f123']
     fig, axs = plt.subplots(3, 3, figsize=(7, 6))
-    k_remain_list_dict = {
-        'Piezo2CONT': ['k1', 'k2', 'k3', 'k4'],
-        'Piezo2CKO': ['k1', 'k2', 'k3'],
-        'Atoh1CKO': ['k1', 'k3']}
+    k_scale_dict_dict = {
+        'Piezo2CONT': {},
+        'Piezo2CKO': {'k4': 0},
+        'Atoh1CKO': {'k2': 0, 'k4': 0}}
     for i, animal in enumerate(ANIMAL_LIST):
         lmpars_cko = get_lmpars_cko(fitApproach.ref_mean_lmpars,
-                                    k_remain_list_dict[animal],
-                                    fitApproach.label)
+                                    k_scale_dict_dict[animal])
         # Plot current
         for stim in REF_STIM_LIST:
             fine_time = fitApproach.data_dicts_dicts[animal][stim][
@@ -626,10 +601,10 @@ if __name__ == '__main__':
             axs[0, i].set_xlim(0, 5000)
         # Plot firing rate
         fitApproach.plot_cko_customized(
-            k_remain_list_dict[animal], fig=fig, axs=axs[1, i],
+            k_scale_dict_dict[animal], fig=fig, axs=axs[1, i],
             animal_mod='Piezo2CONT', animal_rec=None)
         fitApproach.plot_cko_customized(
-            k_remain_list_dict[animal], fig=fig, axs=axs[2, i],
+            k_scale_dict_dict[animal], fig=fig, axs=axs[2, i],
             animal_mod=None, animal_rec=animal)
         # Add the bar on top for rec
         for stim in REF_STIM_LIST:
@@ -665,3 +640,37 @@ if __name__ == '__main__':
         'mod_data_dict']['stress']
     single_current = stress_to_current(fine_time, fine_stress,
                                        **params_dict)
+    # %% Find a way for Piezo2 without totally kicking out the k4
+
+    def ksa1_to_lmpars(ksa1, lmpars_old):
+        lmpars_new = copy.deepcopy(lmpars_old)
+        ksa = lmpars_old['k2'].value + lmpars_old['k4'].value
+        lmpars_new['k2'].value = ksa * ksa1
+        lmpars_new['k4'].value = ksa * (1 - ksa1)
+        return lmpars_new
+
+    def get_k_scale_dict(lmpars_old, lmpars_new):
+        k_scale_dict = {
+            key: lmpars_new[key].value / lmpars_old[key].value
+            for key in ['k2', 'k4']}
+        return k_scale_dict
+
+    def ksa1_to_k_scale_dict(ksa1, lmpars_old):
+        lmpars_new = ksa1_to_lmpars(ksa1, lmpars_old)
+        k_scale_dict = get_k_scale_dict(lmpars_old, lmpars_new)
+        return k_scale_dict
+
+    for ksa1 in [.9, .95, .99, .999]:
+        fitApproach.plot_cko_customized(
+            ksa1_to_k_scale_dict(ksa1, fitApproach.ref_mean_lmpars),
+            animal_rec='Piezo2CKO', animal_mod='Piezo2CONT')
+    # %%
+    k_scale_dict = {'k2': 1.15, 'k4': 0.01}
+    lmpars = get_lmpars_cko(fitApproach.ref_mean_lmpars, k_scale_dict)
+    params_ser = get_params_paper(lmpars)
+    fitApproach.plot_cko_customized(
+        k_scale_dict,
+        animal_rec='Piezo2CKO', animal_mod='Piezo2CONT')
+    # %% Generate the copy-pasteable table for paper writing
+    params_paper_dict = {key: get_params_paper(value.ref_mean_lmpars)
+                         for key, value in fitApproach_dict.items()}
