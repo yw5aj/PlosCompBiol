@@ -630,16 +630,6 @@ if __name__ == '__main__':
     fig.savefig('./data/output/fig6.png')
     fig.savefig('./data/output/fig6.pdf')
     plt.close(fig)
-    # %% Figure 3
-    animal = 'Piezo2CONT'
-    stim = 0
-    params_dict = lmpars_to_params(fitApproach.ref_mean_lmpars)
-    fine_time = fitApproach.data_dicts_dicts[animal][stim][
-        'mod_data_dict']['time']
-    fine_stress = fitApproach.data_dicts_dicts[animal][stim][
-        'mod_data_dict']['stress']
-    single_current = stress_to_current(fine_time, fine_stress,
-                                       **params_dict)
     # %% Find a way for Piezo2 without totally kicking out the k4
 
     def ksa1_to_lmpars(ksa1, lmpars_old):
@@ -671,6 +661,70 @@ if __name__ == '__main__':
     fitApproach.plot_cko_customized(
         k_scale_dict,
         animal_rec='Piezo2CKO', animal_mod='Piezo2CONT')
+    # %% Figure 3
+    animal = 'Piezo2CONT'
+    stim = 0
+    params_dict = lmpars_to_params(fitApproach.ref_mean_lmpars)
+    fine_time = fitApproach.data_dicts_dicts[animal][stim][
+        'mod_data_dict']['time']
+    fine_stress = fitApproach.data_dicts_dicts[animal][stim][
+        'mod_data_dict']['stress']
+    # Control
+    single_current = stress_to_current(fine_time, fine_stress,
+                                       **params_dict)
+    fig, axs = plt.subplots(2, 1, figsize=(3.5, 6))
+    current_label_list = ['RA', 'SA1', 'USA', 'SA2']
+    for current, label in zip(single_current.T, current_label_list):
+        axs[0].plot(fine_time, -current, label=label)
+    axs[0].set_title('Piezo2 CONT')
+    # Piezo2 CKO
+    lmpars_cko = ksa1_to_lmpars(0.99, fitApproach.ref_mean_lmpars)
+    params_dict_cko = lmpars_to_params(lmpars_cko)
+    single_current_cko = stress_to_current(fine_time, fine_stress,
+                                           **params_dict_cko)
+    for current, label in zip(single_current_cko.T, current_label_list):
+        axs[1].plot(fine_time, -current, label=label)
+    axs[1].set_title('Piezo2 CKO')
+    for axes in axs.ravel():
+        axes.set_xlabel('Time (msec)')
+        axes.set_ylabel('Current (pA)')
+        axes.set_ylim(-8.5, 0.5)
+        axes.legend(loc=4)
+    fig.tight_layout()
+    fig.savefig('./data/output/current.png')
+    plt.close(fig)
+    # %% Current from neurite vs. mc
+    fig, axs = plt.subplots(3, 1, figsize=(3.5, 6))
+    axs[0].plot(fine_time, -single_current.T[0] - single_current.T[2], '-k')
+    axs[1].plot(fine_time, -single_current.T[1] - single_current.T[3], '-k')
+    axs[2].plot(fine_time, -single_current.sum(axis=1), '-k')
+    for axes in axs.ravel():
+        axes.set_xlabel('Time (msec)')
+        axes.set_ylabel('Current (pA)')
+    axs[0].set_title('Neurite current')
+    axs[1].set_title('Merkel cell current')
+    axs[2].set_title('Generator current')
+    fig.tight_layout()
+    fig.savefig('./data/output/current_components.png')
+    plt.close(fig)
+    # %% Effect of varying tau1
+    fig, axs = plt.subplots(3, 2, figsize=(7, 6))
+    # Tau1
+    tau1_list = [3, 8, 13]
+    for tau1 in tau1_list:
+        params_dict['tau_arr'][0] = tau1
+        single_current = stress_to_current(fine_time, fine_stress,
+                                           **params_dict)
+        axs[0, 0].plot(fine_time, -single_current.T[0] - single_current.T[2])
+    # Reset Tau1
+    params_dict['tau_arr'][0] = 8
+    # Tau2
+    tau2_list = [50, 200, 350]
+    for tau2 in tau2_list:
+        params_dict['tau_arr'][1] = tau2
+        single_current = stress_to_current(fine_time, fine_stress,
+                                           **params_dict)
+        axs[1, 0].plot(fine_time, -single_current.T[1] - single_current.T[3])
     # %% Generate the copy-pasteable table for paper writing
     params_paper_dict = {key: get_params_paper(value.ref_mean_lmpars)
                          for key, value in fitApproach_dict.items()}
