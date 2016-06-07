@@ -8,6 +8,7 @@ Created on Tue Feb 16 10:25:32 2016
 import numpy as np
 import pandas as pd
 import os
+import shutil
 from multiprocessing import Pool
 from collections import defaultdict
 from itertools import combinations
@@ -283,7 +284,8 @@ def fit_single_rec_mp(args):
 def plot_single_fit(lmpars_fit, groups, time, stress,
                     rec_spike_time, plot_kws={}, roll=True,
                     plot_rec=True, plot_mod=True,
-                    fig=None, axs=None, **kwargs):
+                    fig=None, axs=None, save_data=False, fname=None,
+                    **kwargs):
     if roll:
         rec_fr = kwargs['rec_fr_roll']
     else:
@@ -305,11 +307,21 @@ def plot_single_fit(lmpars_fit, groups, time, stress,
         axs0.set_xlim(0, 5000)
         axs0.set_xlabel('Time (msec)')
         axs0.set_ylabel('Instantaneous firing (Hz)')
+        if save_data:
+            np.savetxt('./data/%s_mod_spike_time.csv' % fname,
+                       mod_spike_time, delimiter=',')
+            np.savetxt('./data/%s_mod_fr_inst.csv' % fname,
+                       mod_fr_inst * 1e3, delimiter=',')
     if plot_rec:
         axs1.plot(rec_spike_time, rec_fr * 1e3, '.', **plot_kws)
         axs1.set_xlim(0, 5000)
         axs1.set_xlabel('Time (msec)')
         axs1.set_ylabel('Instantaneous firing (Hz)')
+        if save_data:
+            np.savetxt('./data/%s_rec_spike_time.csv' % fname,
+                       rec_spike_time, delimiter=',')
+            np.savetxt('./data/%s_rec_fr_inst.csv' % fname,
+                       rec_fr * 1e3, delimiter=',')
     fig.tight_layout()
     return fig, axs
 
@@ -465,7 +477,8 @@ class FitApproach():
     def plot_cko_customized(self, k_scale_dict,
                             animal_rec=None, animal_mod=None,
                             fig=None, axs=None,
-                            close_fig=False, save_fig=False, show_label=False):
+                            close_fig=False, save_fig=False, show_label=False,
+                            save_data=False, fname=''):
         lmpars_cko = copy.deepcopy(self.ref_mean_lmpars)
         for k, scale in k_scale_dict.items():
             lmpars_cko[k].value *= scale
@@ -480,12 +493,14 @@ class FitApproach():
                 plot_single_fit(
                     lmpars_cko, fig=fig, axs=axs, roll=False,
                     plot_rec=True, plot_mod=False,
-                    plot_kws={'color': color},
+                    plot_kws={'color': color}, save_data=save_data,
+                    fname='%s_stim_%s' % (fname, {0: 'high', 2: 'low'}[stim]),
                     **self.data_dicts_dicts[animal_rec][stim]['fit_data_dict'])
             if animal_mod is not None:
                 plot_single_fit(
                     lmpars_cko, fig=fig, axs=axs, roll=False,
-                    plot_rec=False, plot_mod=True,
+                    plot_rec=False, plot_mod=True, save_data=save_data,
+                    fname='%s_stim_%s' % (fname, {0: 'high', 2: 'low'}[stim]),
                     plot_kws={'color': color},
                     **self.data_dicts_dicts[animal_mod][stim]['fit_data_dict'])
         if show_label:
@@ -725,6 +740,124 @@ if __name__ == '__main__':
         single_current = stress_to_current(fine_time, fine_stress,
                                            **params_dict)
         axs[1, 0].plot(fine_time, -single_current.T[1] - single_current.T[3])
+    plt.close(fig)
     # %% Generate the copy-pasteable table for paper writing
     params_paper_dict = {key: get_params_paper(value.ref_mean_lmpars)
                          for key, value in fitApproach_dict.items()}
+    # %% Generate csv data for Greg plot #1
+    fitApproach = fitApproach_dict['t3f12v3']
+    animal = 'Piezo2CONT'
+    stim = 2
+    params_dict = lmpars_to_params(fitApproach.ref_mean_lmpars)
+    fine_time = fitApproach.data_dicts_dicts[animal][stim][
+        'mod_data_dict']['time']
+    fine_stress = fitApproach.data_dicts_dicts[animal][stim][
+        'mod_data_dict']['stress']
+    # Control
+    single_current = stress_to_current(fine_time, fine_stress,
+                                       **params_dict)
+    csv_dict = {}
+    csv_dict['sa_current'] = single_current.T[1] + single_current.T[3]
+    csv_dict['ra_current'] = single_current.T[0]
+    csv_dict['time'] = np.arange(single_current.shape[0]) / 10
+    csv_dict['usa_current'] = single_current.T[2]
+    csv_dict['total_current'] = single_current.sum(axis=1)
+    csv_dict['cluster_current'] = 8 * csv_dict['total_current']
+    csv_dict['spike_time'], fr_inst = get_mod_spike(
+        fitApproach.ref_mean_lmpars,
+        **fitApproach.data_dicts_dicts[animal][stim]['mod_data_dict'])
+    for key, item in csv_dict.items():
+        np.savetxt('./data/GregCSVs/fig1/%s.csv' % key, item, delimiter=',')
+    # %% Fig 2
+    fitApproach = fitApproach_dict['t3f12v3']
+    k_scale_dict_dict = {
+        'Piezo2CONT': {},
+        'Piezo2CKO': {'k4': 0},
+        'Atoh1CKO': {'k2': 0, 'k4': 0}}
+    for i, animal in enumerate(ANIMAL_LIST):
+        # Plot firing rate
+        fitApproach.plot_cko_customized(
+            k_scale_dict_dict[animal],
+            animal_mod='Piezo2CONT', animal_rec=None,
+            save_data=True, fname=animal)
+        fitApproach.plot_cko_customized(
+            k_scale_dict_dict[animal],
+            animal_mod=None, animal_rec=animal,
+            save_data=True, fname=animal)
+    for fname in os.listdir('./data'):
+        if fname.endswith('.csv'):
+            shutil.move('./data/%s' % fname, './data/GregCSVs/fig2/%s' % fname)
+    # %% Fig #3
+    fitApproach = fitApproach_dict['t3f12v3']
+    animal = 'Piezo2CONT'
+    stim = 2
+    lmpars = fitApproach.ref_mean_lmpars
+    fine_time = fitApproach.data_dicts_dicts[animal][stim][
+        'mod_data_dict']['time']
+    fine_stress = fitApproach.data_dicts_dicts[animal][stim][
+        'mod_data_dict']['stress']
+    # Control
+    single_current = stress_to_current(fine_time, fine_stress,
+                                       **params_dict)
+    k_scale_dict_dict = {
+        'Piezo2CONT': {},
+        'Piezo2CKO': {'k4': 0},
+        'Atoh1CKO': {'k2': 0, 'k4': 0}}
+    csv_dict = {}
+    # Generate SA current
+    csv_dict['Piezo2CONT_sa_current'] = single_current.T[1] + \
+                                        single_current.T[3]
+    csv_dict['Piezo2CKO_sa_current'] = single_current.T[1]
+    # Generate cumulate currents
+    for animal, k_scale_dict in k_scale_dict_dict.items():
+        lmpars_cko = get_lmpars_cko(lmpars, k_scale_dict)
+        params_dict_cko = lmpars_to_params(lmpars_cko)
+        single_current = stress_to_current(fine_time, fine_stress,
+                                           **params_dict_cko).sum(axis=1)
+        csv_dict['%s_current' % animal] = single_current
+    time = np.arange(csv_dict['Piezo2CONT_current'].size) * 1e-1
+    for key, item in csv_dict.items():
+        np.savetxt('./data/GregCSVs/fig3/B/%s.csv' % key, item, delimiter=',')
+    np.savetxt('./data/GregCSVs/fig3/B/time.csv', time, delimiter=',')
+    # Copy data from fig 2 in
+    for fname in os.listdir('./data/GregCSVs/fig2'):
+        if 'mod' in fname:
+            shutil.copy('./data/GregCSVs/fig2/%s' % fname,
+                        './data/GregCSVs/fig3/A/%s' % fname)
+    # Separate RA, SA and USA currents
+    # %% Fig #4
+    method_dict = {'nousa': 't2f12',
+                   'usa': 't3f12v3',
+                   'longsa': 't2v12'}
+    k_scale_dict_dict = {
+        'Piezo2CONT': {},
+        'Piezo2CKO': {'k4': 0},
+        'Atoh1CKO': {'k2': 0, 'k4': 0}}
+    for method_name, approach in method_dict.items():
+        fitApproach = fitApproach_dict[approach]
+#        for i, animal in enumerate(ANIMAL_LIST):
+        animal = 'Piezo2CONT'
+        # Plot firing rate
+        fitApproach.plot_cko_customized(
+            k_scale_dict_dict[animal],
+            animal_mod='Piezo2CONT', animal_rec=None,
+            save_data=True, fname=method_name + '_' + animal)
+    for fname in os.listdir('./data'):
+        if fname.endswith('.csv'):
+            shutil.move('./data/%s' % fname,
+                        './data/GregCSVs/fig4/A/%s' % fname)
+    method_name = 'usa'
+    k_scale_dict = k_scale_dict_dict['Piezo2CKO']
+    fitApproach = fitApproach_dict['t3f12v3']
+    fitApproach.plot_cko_customized(
+        k_scale_dict, animal_mod='Piezo2CONT', animal_rec=None,
+        save_data=True, fname=method_name + '_' + 'Piezo2CKO')
+    method_name, k_scale_dict = ('longsa', {'k3': 0})
+    fitApproach = fitApproach_dict['t2v12']
+    fitApproach.plot_cko_customized(
+        k_scale_dict, animal_mod='Piezo2CONT', animal_rec=None,
+        save_data=True, fname=method_name + '_' + 'Piezo2CKO')
+    for fname in os.listdir('./data'):
+        if fname.endswith('.csv'):
+            shutil.move('./data/%s' % fname,
+                        './data/GregCSVs/fig4/B/%s' % fname)
