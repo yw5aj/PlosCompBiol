@@ -10,7 +10,7 @@ import pandas as pd
 import os
 import shutil
 from multiprocessing import Pool
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from itertools import combinations
 from lmfit import minimize, fit_report, Parameters
 import matplotlib.pyplot as plt
@@ -374,6 +374,12 @@ def get_params_paper(lmpars):
         params_paper['kmc1'] = params_ser['k2'] / params_paper['kmc']
         params_paper['kmc2'] = params_ser['k3'] / params_paper['kmc']
     return params_paper
+
+
+def get_k_from_kmc(kmc, kmc1):
+    k2 = kmc * kmc1
+    k4 = kmc * (1. - kmc1)
+    return k2, k4
 
 
 class FitApproach():
@@ -768,6 +774,72 @@ if __name__ == '__main__':
         **fitApproach.data_dicts_dicts[animal][stim]['mod_data_dict'])
     for key, item in csv_dict.items():
         np.savetxt('./data/GregCSVs/fig1/%s.csv' % key, item, delimiter=',')
+    # %% Parameter sensitivity figure
+    # Get the k2 values
+    kmc1_list = [.70, .865401, .99]
+    kmc = fitApproach.ref_mean_lmpars['k2'] + fitApproach.ref_mean_lmpars['k4']
+    k2_list = []
+    k4_list = []
+    for kmc1 in kmc1_list:
+        k2_list.append(get_k_from_kmc(kmc, kmc1)[0])
+        k4_list.append(get_k_from_kmc(kmc, kmc1)[1])
+
+    def plot_current_and_spike(key, val, fig, axs,
+                               fine_time=fine_time, fine_stress=fine_stress,
+                               fitApproach=fitApproach,
+                               **plotkws):
+        # Initialization
+        lmpars = copy.deepcopy(fitApproach.ref_mean_lmpars)
+        lmpars[key].value = val
+        params_dict_new = lmpars_to_params(lmpars)
+        # Formatting data
+        if key == 'k2':
+            lmpars['k4'].value = k4_list[k2_list.index(val)]
+            params_dict_new = lmpars_to_params(lmpars)
+            keyname = 'kmc1'
+            params_paper = get_params_paper(lmpars)
+            intval = int(params_paper[keyname] * 100)
+        elif key == 'tau1':
+            keyname = 'tau_nr'
+            intval = int(val)
+        elif key == 'tau2':
+            keyname = 'tau_mc'
+            intval = int(val)
+        # Calculation
+        single_current = stress_to_current(fine_time, fine_stress,
+                                           **params_dict_new).sum(axis=1)
+        spike_time, fr_inst = get_mod_spike(
+            lmpars,
+            **fitApproach.data_dicts_dicts[animal][stim]['mod_data_dict'])
+        # Plotting
+        axs[0].plot(fine_time, single_current, '-',
+                    label='%s=%d' % (keyname, intval),
+                    **plotkws)
+        axs[1].plot(spike_time, fr_inst * 1e3, '.',
+                    label='%s=%d' % (keyname, intval),
+                    **plotkws)
+        # Saving data
+        np.savetxt('./data/GregCSVs/ParamTuning/current_%s_%d.csv' %
+                   (keyname, intval), single_current, delimiter=',')
+        np.savetxt('./data/GregCSVs/ParamTuning/time_%s_%d.csv' %
+                   (keyname, intval), fine_time, delimiter=',')
+        np.savetxt('./data/GregCSVs/ParamTuning/fr_inst_%s_%d.csv' %
+                   (keyname, intval), fr_inst, delimiter=',')
+        np.savetxt('./data/GregCSVs/ParamTuning/spike_time_%s_%d.csv' %
+                   (keyname, intval), spike_time, delimiter=',')
+        return fig, axs
+    fig, axs = plt.subplots(3, 2, figsize=(7, 7))
+    param_tuning_dict = OrderedDict({'tau1': [1, 8, 15],
+                                     'tau2': [50, 200, 350],
+                                     'k2': k2_list})
+    for axs_row, (key, val_list) in zip(axs, param_tuning_dict.items()):
+        for level, val in enumerate(val_list):
+            plot_current_and_spike(key, val, fig, axs_row,
+                                   **{'color': str(0.3 * level)})
+    for axes in axs.ravel():
+        axes.legend()
+    fig.savefig('./data/GregCSVs/ParamTuning/example.png', dpi=300)
+
     # %% Fig 2
     fitApproach = fitApproach_dict['t3f12v3']
     k_scale_dict_dict = {
