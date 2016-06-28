@@ -859,6 +859,17 @@ if __name__ == '__main__':
     for fname in os.listdir('./data'):
         if fname.endswith('.csv'):
             shutil.move('./data/%s' % fname, './data/GregCSVs/fig2/%s' % fname)
+    # %% RA only
+    try:
+        fitApproach.plot_cko_customized(
+            {'k2': 0, 'k3': 0, 'k4': 0}, animal_mod='Piezo2CONT',
+            animal_rec=None, save_data=True, fname='RaOnly')
+    except ValueError:
+        pass
+    for fname in os.listdir('./data'):
+        if fname.endswith('.csv'):
+            shutil.move('./data/%s' % fname,
+                        './data/GregCSVs/RaOnly/%s' % fname)
     # %% Fig #3
     fitApproach = fitApproach_dict['t3f12v3']
     animal = 'Piezo2CONT'
